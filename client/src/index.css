@@ -5,7 +5,7 @@
 :root {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   color: #f8fafc;
-  background: #070b14;
+  background: #040711;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -14,4 +14,49 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #040711;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(30, 41, 59, 0.4) 0%, transparent 75%),
+    radial-gradient(circle at 10% 90%, rgba(212, 166, 74, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 90% 90%, rgba(37, 99, 235, 0.05) 0%, transparent 50%);
+  background-attachment: fixed;
+  color: #f1f5f9;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism panel styles */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.glass-panel-elevated {
+  background: rgba(22, 32, 54, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 166, 74, 0.25);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0f1d;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Smooth transitions */
+button, a {
+  transition: all 0.15s ease-in-out;
 }
