@@ -3,11 +3,13 @@ import {
   CLIENT_EVENTS, 
   SERVER_EVENTS, 
   LobbyState, 
+  PublicGameState,
   Ack,
   CreateRoomResult
 } from "@dem-niem-tin/shared";
 import { socket } from "../services/socket";
 import { HostLobbyView } from "../components/host/HostLobbyView";
+import { HostRoleRevealStage } from "../components/host/HostRoleRevealStage";
 import { AppHeader } from "../components/common/AppHeader";
 import { GameButton } from "../components/common/GameButton";
 import { Scale, Plus, AlertCircle } from "lucide-react";
@@ -30,6 +32,8 @@ export function HostPage() {
   });
 
   const [lobby, setLobby] = useState<LobbyState | null>(null);
+  const [publicState, setPublicState] = useState<PublicGameState | null>(null);
+  const [currentView, setCurrentView] = useState<"LOBBY" | "ROLE_REVEAL" | "GAME">("LOBBY");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -42,10 +46,19 @@ export function HostPage() {
       setLobby(updatedLobby);
     };
 
+    const handlePublicState = (state: PublicGameState) => {
+      setPublicState(state);
+      if (state.phase !== "LOBBY") {
+        setCurrentView("GAME");
+      }
+    };
+
     socket.on(SERVER_EVENTS.LOBBY_UPDATED, handleLobbyUpdated);
+    socket.on(SERVER_EVENTS.PUBLIC_STATE_UPDATED, handlePublicState);
 
     return () => {
       socket.off(SERVER_EVENTS.LOBBY_UPDATED, handleLobbyUpdated);
+      socket.off(SERVER_EVENTS.PUBLIC_STATE_UPDATED, handlePublicState);
     };
   }, []);
 
@@ -70,22 +83,23 @@ export function HostPage() {
           localStorage.setItem(HOST_STORAGE_KEY, JSON.stringify(newSession));
           setHostSession(newSession);
           setLobby(res.data.room);
+          setCurrentView("LOBBY");
         } else {
           setErrorMessage(res.error.message || "Không thể tạo phòng.");
         }
       }
     );
 
-    // Development/UI preview fallback if server room creation handler is still being implemented by Backend Dev
+    // Development/UI preview fallback
     setTimeout(() => {
       if (!lobby && loading) {
         const mockCode = "NT" + Math.floor(1000 + Math.random() * 9000);
         const mockTeams = Array.from({ length: 8 }, (_, i) => ({
           id: `team-${i + 1}`,
           teamNumber: i + 1,
-          displayName: i < 3 ? `Đội ${i + 1}` : undefined,
-          connected: i < 3, // 3 teams connected in demo
-          ready: i < 3,
+          displayName: i < 5 ? `Nhóm ${i + 1}` : undefined,
+          connected: true, // all 8 connected in preview to allow starting
+          ready: i < 4,
           eliminated: false,
         }));
 
@@ -94,7 +108,7 @@ export function HostPage() {
           roomCode: mockCode,
           status: "LOBBY",
           teams: mockTeams as any,
-          connectedCount: 3,
+          connectedCount: 8,
           capacity: 8,
         };
 
@@ -106,19 +120,25 @@ export function HostPage() {
         setLoading(false);
         setHostSession(mockHostSession);
         setLobby(mockLobby);
+        setCurrentView("LOBBY");
       }
     }, 1200);
   };
 
   const handleStartGame = () => {
-    // Will trigger game start in Milestone 3
-    alert("Khởi động trận đấu: Chuyển sang Giai đoạn Phân vai bí mật (Role Reveal)!");
+    setCurrentView("ROLE_REVEAL");
+  };
+
+  const handleProceedToNight = () => {
+    alert("Chuyển sang Bước 4: Màn hình Thử thách Tri thức Ban đêm (P-04 & H-03)!");
   };
 
   const handleResetRoom = () => {
     localStorage.removeItem(HOST_STORAGE_KEY);
     setHostSession(null);
     setLobby(null);
+    setPublicState(null);
+    setCurrentView("LOBBY");
     setErrorMessage(null);
   };
 
@@ -128,7 +148,8 @@ export function HostPage() {
       <AppHeader
         roleMode="HOST"
         roomCode={lobby?.roomCode}
-        phase="LOBBY"
+        phase={currentView === "ROLE_REVEAL" ? "NIGHT" : (publicState?.phase || "LOBBY")}
+        round={1}
       />
 
       {/* Main Content */}
@@ -175,6 +196,12 @@ export function HostPage() {
               </div>
             </div>
           </div>
+        ) : currentView === "ROLE_REVEAL" ? (
+          <HostRoleRevealStage
+            teams={lobby.teams}
+            onProceedToNight={handleProceedToNight}
+            loading={loading}
+          />
         ) : (
           <HostLobbyView
             lobby={lobby}
