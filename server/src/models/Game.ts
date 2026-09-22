@@ -1,6 +1,4 @@
-import mongoose, { type InferSchemaType } from "mongoose";
-
-const { model, models, Schema } = mongoose;
+import mongoose, { model, Schema, type InferSchemaType } from "mongoose";
 
 const PHASES = [
   "LOBBY",
@@ -30,6 +28,38 @@ const gameSchema = new Schema(
     phaseEndsAt: { type: Date },
     startedAt: { type: Date },
     finishedAt: { type: Date },
+    publicClues: {
+      type: [
+        {
+          id: { type: String, required: true },
+          title: { type: String, required: true },
+          description: { type: String, required: true },
+          visibility: { type: String, enum: ["public", "private"], required: true },
+          revealedAt: { type: Number },
+        },
+      ],
+      default: [],
+    },
+    publicEvents: {
+      type: [
+        {
+          id: { type: String, required: true },
+          type: { type: String, required: true },
+          message: { type: String, required: true },
+          timestamp: { type: Number, required: true },
+        },
+      ],
+      default: [],
+    },
+    activeQuestion: {
+      type: {
+        id: { type: String, required: true },
+        category: { type: String, required: true },
+        difficulty: { type: String, enum: ["easy", "medium", "hard"], required: true },
+        text: { type: String, required: true },
+        options: { type: [String], required: true },
+      },
+    },
   },
   { timestamps: true, versionKey: false },
 );
@@ -38,4 +68,4 @@ gameSchema.index({ status: 1, updatedAt: -1 });
 
 export type GameDocument = InferSchemaType<typeof gameSchema>;
 
-export const GameModel = models.Game ?? model("Game", gameSchema);
+export const GameModel = mongoose.models.Game ?? model("Game", gameSchema);

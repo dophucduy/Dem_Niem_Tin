@@ -1,6 +1,6 @@
 import { GAME_CONFIG, type LobbyState, type RoomStatus } from "@dem-niem-tin/shared";
 import { Types } from "mongoose";
-import { PlayerModel, RoomModel, TeamModel } from "../models/index.js";
+import { PlayerModel, RoomModel, TeamModel, type RoomDocument, type TeamDocument, type PlayerDocument } from "../models/index.js";
 import { ServiceError } from "./errors.js";
 import { createRoomCode } from "./roomCode.js";
 import { createSessionToken, hashSessionToken } from "./session.js";
@@ -160,12 +160,12 @@ export class RoomService {
   }
 
   async getLobby(roomId: string | Types.ObjectId): Promise<LobbyState> {
-    const room = await RoomModel.findById(roomId).lean();
+    const room = await RoomModel.findById(roomId).lean() as unknown as RoomDocument & { _id: Types.ObjectId };
     if (!room) throw new ServiceError("ROOM_NOT_FOUND", "Room not found");
 
     const [teams, players] = await Promise.all([
-      TeamModel.find({ roomId: room._id }).sort({ teamNumber: 1 }).lean(),
-      PlayerModel.find({ roomId: room._id }).select("teamId connected").lean(),
+      TeamModel.find({ roomId: room._id }).sort({ teamNumber: 1 }).lean() as unknown as (TeamDocument & { _id: Types.ObjectId })[],
+      PlayerModel.find({ roomId: room._id }).select("teamId connected").lean() as unknown as (PlayerDocument & { _id: Types.ObjectId })[],
     ]);
     const playersByTeam = new Map(players.map((player) => [player.teamId.toString(), player]));
 

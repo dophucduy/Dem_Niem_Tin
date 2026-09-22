@@ -1,6 +1,4 @@
-import mongoose, { type InferSchemaType } from "mongoose";
-
-const { model, models, Schema } = mongoose;
+import mongoose, { model, Schema, type InferSchemaType } from "mongoose";
 
 const teamSchema = new Schema(
   {
@@ -18,4 +16,4 @@ teamSchema.index({ roomId: 1, teamNumber: 1 }, { unique: true });
 
 export type TeamDocument = InferSchemaType<typeof teamSchema>;
 
-export const TeamModel = models.Team ?? model("Team", teamSchema);
+export const TeamModel = mongoose.models.Team ?? model("Team", teamSchema);

@@ -57,6 +57,18 @@ export interface ClientToServerEvents {
     payload: SetReadyPayload,
     acknowledge: (response: Ack<SetReadyResult>) => void,
   ) => void;
+  [CLIENT_EVENTS.ANSWER_QUESTION]: (
+    payload: { playerId: string; questionId: string; answer: string },
+    acknowledge: (response: Ack<{ correct: boolean }>) => void
+  ) => void;
+  [CLIENT_EVENTS.USE_ABILITY]: (
+    payload: { gameId: string; playerId: string; targetId?: string },
+    acknowledge: (response: Ack<{ success: boolean }>) => void
+  ) => void;
+  [CLIENT_EVENTS.SUBMIT_VOTE]: (
+    payload: { gameId: string; round: number; voterId: string; targetId: string },
+    acknowledge: (response: Ack<{ success: boolean }>) => void
+  ) => void;
 }
 
 export interface ServerToClientEvents {
