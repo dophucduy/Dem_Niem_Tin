@@ -21,6 +21,14 @@ npm.cmd run dev
 - Player: `http://localhost:5173/player`
 - Server health: `http://localhost:3000/api/health`
 
+Khởi tạo collections và indexes trên database trong `MONGODB_URI`:
+
+```powershell
+npm.cmd run db:setup --workspace server
+```
+
+Tên database được cấu hình riêng bằng `MONGODB_DB_NAME` (mặc định: `dem-niem-tin-dev`).
+
 Điện thoại trong cùng Wi-Fi truy cập bằng IPv4 của laptop. Khi đó, cập nhật `CLIENT_ORIGIN` trong `.env` và tạo `client/.env.local` với `VITE_SERVER_URL=http://<LOCAL-IP>:3000`.
 
 ## Kiểm tra

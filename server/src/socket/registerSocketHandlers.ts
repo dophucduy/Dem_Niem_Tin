@@ -2,23 +2,24 @@ import {
   CLIENT_EVENTS,
   SERVER_EVENTS,
   type ClientType,
+  type ClientToServerEvents,
   type ConnectionReadyPayload,
+  type ServerToClientEvents,
 } from "@dem-niem-tin/shared";
 import type { Server, Socket } from "socket.io";
-import { z } from "zod";
+import { connectionCheckSchema } from "../validation/socketSchemas.js";
 
-const connectionCheckSchema = z.object({
-  clientType: z.enum(["HOST", "PLAYER"]),
-});
+type GameServer = Server<ClientToServerEvents, ServerToClientEvents>;
+type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
-export function registerSocketHandlers(io: Server): void {
-  io.on("connection", (socket: Socket) => {
+export function registerSocketHandlers(io: GameServer): void {
+  io.on("connection", (socket: GameSocket) => {
     console.log(`Socket connected: ${socket.id}`);
 
-    socket.on(CLIENT_EVENTS.CONNECTION_CHECK, (rawPayload: unknown) => {
+    socket.on(CLIENT_EVENTS.CONNECTION_CHECK, (rawPayload) => {
       const parsed = connectionCheckSchema.safeParse(rawPayload);
       if (!parsed.success) {
-        socket.emit("error:validation", { message: "Invalid connection payload" });
+        socket.emit(SERVER_EVENTS.VALIDATION_ERROR, { message: "Invalid connection payload" });
         return;
       }
 
