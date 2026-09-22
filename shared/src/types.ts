@@ -166,3 +166,11 @@ export type ReconnectResult = {
   privateState?: PrivatePlayerState;
   publicState?: PublicGameState;
 };
+
+export type SetReadyPayload = {
+  ready: boolean;
+};
+
+export type SetReadyResult = {
+  room: LobbyState;
+};

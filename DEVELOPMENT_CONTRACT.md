@@ -55,4 +55,4 @@ Handle `ok === false` explicitly in the UI. Do not infer errors from timeouts al
 - `session:replaced`
 - `error:validation`
 
-Room creation, joining, and reconnection handlers are the next integration task. Their payload and result types are already fixed in the shared package.
+Room creation, joining, reconnection, disconnect presence, and ready-state handlers are implemented. Frontend work can consume them directly; gameplay work can attach role assignment after the lobby reaches 8/8.

@@ -9,6 +9,8 @@ import type {
   PublicGameState,
   ReconnectPayload,
   ReconnectResult,
+  SetReadyPayload,
+  SetReadyResult,
 } from "./types.js";
 
 export const CLIENT_EVENTS = {
@@ -50,6 +52,10 @@ export interface ClientToServerEvents {
   [CLIENT_EVENTS.RECONNECT]: (
     payload: ReconnectPayload,
     acknowledge: (response: Ack<ReconnectResult>) => void,
+  ) => void;
+  [CLIENT_EVENTS.READY]: (
+    payload: SetReadyPayload,
+    acknowledge: (response: Ack<SetReadyResult>) => void,
   ) => void;
 }
 
