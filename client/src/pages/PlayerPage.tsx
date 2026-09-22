@@ -4,12 +4,18 @@ import {
   CLIENT_EVENTS, 
   SERVER_EVENTS, 
   LobbyState, 
+  PublicGameState,
+  PrivatePlayerState,
+  Role,
+  Faction,
   Ack 
 } from "@dem-niem-tin/shared";
 import { socket } from "../services/socket";
 import { PlayerJoinView } from "../components/player/PlayerJoinView";
 import { PlayerLobbyView } from "../components/player/PlayerLobbyView";
+import { RoleRevealView } from "../components/player/RoleRevealView";
 import { AppHeader } from "../components/common/AppHeader";
+import { Sparkles } from "lucide-react";
 
 const STORAGE_KEY = "dem_niem_tin_player_session";
 
@@ -35,8 +41,14 @@ export function PlayerPage() {
   });
 
   const [lobby, setLobby] = useState<LobbyState | null>(null);
+  const [publicState, setPublicState] = useState<PublicGameState | null>(null);
+  const [privateState, setPrivateState] = useState<PrivatePlayerState | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Demo role state for frontend UI preview
+  const [demoRole, setDemoRole] = useState<Role>("INSPECTOR");
+  const [showRoleDemoSelector, setShowRoleDemoSelector] = useState(false);
 
   // Setup socket listeners
   useEffect(() => {
@@ -48,10 +60,20 @@ export function PlayerPage() {
       setLobby(updatedLobby);
     };
 
+    const handlePublicState = (state: PublicGameState) => {
+      setPublicState(state);
+    };
+
+    const handlePrivateState = (state: PrivatePlayerState) => {
+      setPrivateState(state);
+    };
+
     socket.on(SERVER_EVENTS.LOBBY_UPDATED, handleLobbyUpdated);
+    socket.on(SERVER_EVENTS.PUBLIC_STATE_UPDATED, handlePublicState);
+    socket.on(SERVER_EVENTS.PRIVATE_STATE_UPDATED, handlePrivateState);
 
     // Try auto-reconnect if session exists
-    if (session && !lobby) {
+    if (session && !lobby && !privateState) {
       setLoading(true);
       socket.emit(
         CLIENT_EVENTS.RECONNECT,
@@ -60,8 +82,9 @@ export function PlayerPage() {
           setLoading(false);
           if (res.ok) {
             setLobby(res.data.room);
+            if (res.data.privateState) setPrivateState(res.data.privateState);
+            if (res.data.publicState) setPublicState(res.data.publicState);
           } else {
-            // Session expired or invalid
             localStorage.removeItem(STORAGE_KEY);
             setSession(null);
           }
@@ -71,6 +94,8 @@ export function PlayerPage() {
 
     return () => {
       socket.off(SERVER_EVENTS.LOBBY_UPDATED, handleLobbyUpdated);
+      socket.off(SERVER_EVENTS.PUBLIC_STATE_UPDATED, handlePublicState);
+      socket.off(SERVER_EVENTS.PRIVATE_STATE_UPDATED, handlePrivateState);
     };
   }, [session]);
 
@@ -104,10 +129,9 @@ export function PlayerPage() {
       }
     );
 
-    // Development/UI preview fallback if server handler is still in development
+    // Development/UI preview fallback
     setTimeout(() => {
       if (!lobby && loading) {
-        // Mock fallback for UI/UX testing
         const mockTeams = Array.from({ length: 8 }, (_, i) => ({
           id: `team-${i + 1}`,
           teamNumber: i + 1,
@@ -138,40 +162,74 @@ export function PlayerPage() {
         setSession(mockSession);
         setLobby(mockLobby);
       }
-    }, 1500);
+    }, 1200);
   };
 
   const handleLeaveRoom = () => {
     localStorage.removeItem(STORAGE_KEY);
     setSession(null);
     setLobby(null);
+    setPublicState(null);
+    setPrivateState(null);
     setErrorMessage(null);
   };
+
+  const handleConfirmReady = () => {
+    if (socket.connected) {
+      socket.emit(CLIENT_EVENTS.READY);
+    }
+  };
+
+  // Determine current active role & faction
+  const activeRole: Role = privateState?.role || demoRole;
+  const activeFaction: Faction = activeRole === "CORRUPTOR" ? "CORRUPTION" : "TRUST";
+
+  // Check if we should display the Role Reveal view
+  const isRoleRevealPhase = 
+    privateState !== null || 
+    publicState?.phase === "LOBBY" || 
+    showRoleDemoSelector;
 
   return (
     <div className="min-h-screen flex flex-col justify-between">
       {/* Header */}
-      {lobby && session ? (
+      {session ? (
         <AppHeader
           roleMode="PLAYER"
-          roomCode={lobby.roomCode}
+          roomCode={session.roomCode}
           teamDisplayName={`Đội ${session.teamNumber}`}
-          phase="LOBBY"
+          phase={publicState?.phase || "LOBBY"}
+          round={publicState?.round || 1}
+          trust={publicState?.trust || 100}
         />
       ) : null}
 
       {/* Main Content Area */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        {!lobby || !session ? (
+        {!session ? (
           <PlayerJoinView
             initialRoomCode={codeFromUrl}
             loading={loading}
             errorMessage={errorMessage}
             onJoin={handleJoin}
           />
+        ) : showRoleDemoSelector || privateState ? (
+          <RoleRevealView
+            role={activeRole}
+            faction={activeFaction}
+            teamNumber={session.teamNumber}
+            onConfirmReady={handleConfirmReady}
+          />
         ) : (
           <PlayerLobbyView
-            lobby={lobby}
+            lobby={lobby || {
+              roomId: "mock",
+              roomCode: session.roomCode,
+              status: "LOBBY",
+              teams: [],
+              connectedCount: 1,
+              capacity: 8
+            }}
             myTeamNumber={session.teamNumber}
             myPlayerId={session.playerId}
             onLeaveRoom={handleLeaveRoom}
@@ -179,8 +237,43 @@ export function PlayerPage() {
         )}
       </main>
 
+      {/* Development UI Preview Bar: Allows designer to test any role reveal */}
+      {session && (
+        <div className="bg-night-950/90 border-t border-night-700/80 p-2.5 px-4 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 text-slate-400">
+            <Sparkles className="w-3.5 h-3.5 text-trust-400" />
+            <span>Xem trước vai trò (UI Test):</span>
+            <select
+              value={activeRole}
+              onChange={(e) => {
+                setDemoRole(e.target.value as Role);
+                setShowRoleDemoSelector(true);
+              }}
+              className="bg-night-800 border border-night-600 rounded px-2 py-1 text-white font-bold text-xs outline-none"
+            >
+              <option value="INSPECTOR">Thanh Tra (Bảo vệ niềm tin)</option>
+              <option value="CORRUPTOR">Người Vụ Lợi (Tham nhũng)</option>
+              <option value="LAW">Pháp Luật (Bảo vệ niềm tin)</option>
+              <option value="WHISTLEBLOWER">Người Tố Giác (Bảo vệ niềm tin)</option>
+              <option value="OVERSIGHT">Cơ Quan Giám Sát (Bảo vệ niềm tin)</option>
+              <option value="SPECIAL_6">Giám Sát Tài Sản (Bảo vệ niềm tin)</option>
+              <option value="SPECIAL_7">Minh Bạch Thông Tin (Bảo vệ niềm tin)</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowRoleDemoSelector(!showRoleDemoSelector)}
+              className="px-2.5 py-1 rounded bg-night-800 hover:bg-night-700 border border-night-600 text-trust-300 font-bold"
+            >
+              {showRoleDemoSelector ? "Về phòng chờ (P-02)" : "Xem mở vai trò (P-03)"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
-      <footer className="py-3 text-center text-xs text-slate-500">
+      <footer className="py-2.5 text-center text-xs text-slate-500">
         Đêm Niềm Tin • Giao diện đội chơi di động
       </footer>
     </div>

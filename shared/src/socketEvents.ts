@@ -51,6 +51,19 @@ export interface ClientToServerEvents {
     payload: ReconnectPayload,
     acknowledge: (response: Ack<ReconnectResult>) => void,
   ) => void;
+  [CLIENT_EVENTS.READY]: () => void;
+  [CLIENT_EVENTS.ANSWER_QUESTION]: (
+    payload: { questionId: string; selectedOption: number },
+    acknowledge?: (response: Ack<{ correct: boolean; explanation: string }>) => void,
+  ) => void;
+  [CLIENT_EVENTS.USE_ABILITY]: (
+    payload: { targetTeamId: string; extraData?: string },
+    acknowledge?: (response: Ack<{ success: boolean; message: string }>) => void,
+  ) => void;
+  [CLIENT_EVENTS.SUBMIT_VOTE]: (
+    payload: { targetTeamId: string },
+    acknowledge?: (response: Ack<{ success: boolean }>) => void,
+  ) => void;
 }
 
 export interface ServerToClientEvents {
