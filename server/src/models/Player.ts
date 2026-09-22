@@ -1,4 +1,4 @@
-import { model, models, Schema, type InferSchemaType } from "mongoose";
+import mongoose, { model, Schema, type InferSchemaType } from "mongoose";
 
 const ROLES = [
   "CORRUPTOR",
@@ -20,6 +20,20 @@ const playerSchema = new Schema(
     faction: { type: String, enum: ["CORRUPTION", "TRUST"], select: false },
     connected: { type: Boolean, default: true, required: true },
     socketId: { type: String, select: false },
+    effectiveState: { type: String, enum: ["SPECIAL", "CITIZEN"], default: "SPECIAL", select: false },
+    abilityUnlocked: { type: Boolean, default: false, select: false },
+    privateResults: {
+      type: [
+        {
+          id: { type: String, required: true },
+          type: { type: String, required: true },
+          message: { type: String, required: true },
+          createdAt: { type: Number, required: true },
+        },
+      ],
+      default: [],
+      select: false,
+    },
   },
   { timestamps: true, versionKey: false },
 );
@@ -29,4 +43,4 @@ playerSchema.index({ roomId: 1, sessionTokenHash: 1 }, { unique: true });
 
 export type PlayerDocument = InferSchemaType<typeof playerSchema>;
 
-export const PlayerModel = models.Player ?? model("Player", playerSchema);
+export const PlayerModel = mongoose.models.Player ?? model("Player", playerSchema);

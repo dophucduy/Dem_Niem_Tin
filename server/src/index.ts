@@ -6,6 +6,7 @@ import { Server } from "socket.io";
 import { env } from "./config/env.js";
 import { connectDatabase } from "./database/connect.js";
 import { registerSocketHandlers } from "./socket/registerSocketHandlers.js";
+import type { SocketIdentity } from "./socket/registerLobbyHandlers.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -18,7 +19,12 @@ app.get("/api/health", (_request, response) => {
   response.json({ status: "ok", service: "dem-niem-tin-server" });
 });
 
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
+const io = new Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  Record<string, never>,
+  SocketIdentity
+>(httpServer, {
   cors: { origin: allowedOrigins, methods: ["GET", "POST"] },
 });
 

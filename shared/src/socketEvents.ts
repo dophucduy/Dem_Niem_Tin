@@ -9,6 +9,8 @@ import type {
   PublicGameState,
   ReconnectPayload,
   ReconnectResult,
+  SetReadyPayload,
+  SetReadyResult,
 } from "./types.js";
 
 export const CLIENT_EVENTS = {
@@ -51,18 +53,21 @@ export interface ClientToServerEvents {
     payload: ReconnectPayload,
     acknowledge: (response: Ack<ReconnectResult>) => void,
   ) => void;
-  [CLIENT_EVENTS.READY]: () => void;
+  [CLIENT_EVENTS.READY]: (
+    payload: SetReadyPayload,
+    acknowledge: (response: Ack<SetReadyResult>) => void,
+  ) => void;
   [CLIENT_EVENTS.ANSWER_QUESTION]: (
-    payload: { questionId: string; selectedOption: number },
-    acknowledge?: (response: Ack<{ correct: boolean; explanation: string }>) => void,
+    payload: { playerId: string; questionId: string; answer: string },
+    acknowledge: (response: Ack<{ correct: boolean }>) => void
   ) => void;
   [CLIENT_EVENTS.USE_ABILITY]: (
-    payload: { targetTeamId: string; extraData?: string },
-    acknowledge?: (response: Ack<{ success: boolean; message: string }>) => void,
+    payload: { gameId: string; playerId: string; targetId?: string },
+    acknowledge: (response: Ack<{ success: boolean }>) => void
   ) => void;
   [CLIENT_EVENTS.SUBMIT_VOTE]: (
-    payload: { targetTeamId: string },
-    acknowledge?: (response: Ack<{ success: boolean }>) => void,
+    payload: { gameId: string; round: number; voterId: string; targetId: string },
+    acknowledge: (response: Ack<{ success: boolean }>) => void
   ) => void;
 }
 

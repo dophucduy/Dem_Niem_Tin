@@ -41,4 +41,11 @@ npm.cmd test
 
 ## Phạm vi hiện tại
 
-Milestone 1 chỉ gồm foundation, Socket.IO, MongoDB connection và kiểm tra kết nối Host/Player. Room, role, question, ability, voting và Trust chưa được triển khai.
+Foundation, MongoDB setup, shared contracts, Room, Team, Player session, reconnect, realtime lobby presence và ready state đã được triển khai. Role, question, ability, voting và Trust chưa được triển khai.
+
+Chạy Room/Session integration tests với MongoDB local:
+
+```powershell
+$env:RUN_DB_INTEGRATION='true'
+npm.cmd run test --workspace server -- tests/room.integration.test.ts
+```

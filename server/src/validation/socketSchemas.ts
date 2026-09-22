@@ -18,3 +18,7 @@ export const reconnectSchema = z.object({
   roomCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/),
   sessionToken: z.string().min(32).max(512),
 });
+
+export const setReadySchema = z.object({
+  ready: z.boolean(),
+});
