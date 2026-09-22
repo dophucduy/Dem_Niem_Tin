@@ -32,10 +32,10 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
   const connectedCount = lobby.teams.filter((t) => t.connected).length;
   const isReadyToStart = connectedCount === 8;
 
-  // In production or LAN, players access window.location.origin/player?code=...
+  // In production or LAN, players scan or access window.location.origin/?code=...
   const joinUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/player?code=${lobby.roomCode}`
-    : `http://localhost:5173/player?code=${lobby.roomCode}`;
+    ? `${window.location.origin}/?code=${lobby.roomCode}`
+    : `http://localhost:5173/?code=${lobby.roomCode}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(joinUrl);
