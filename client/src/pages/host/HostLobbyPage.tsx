@@ -20,8 +20,9 @@ export function HostLobbyPage() {
   } = useHostGame();
 
   const onStart = () => {
-    handleStartGame();
-    navigate("/host/role-reveal");
+    handleStartGame(() => {
+      navigate("/host/role-reveal");
+    });
   };
 
   if (!hostSession || !lobby) {

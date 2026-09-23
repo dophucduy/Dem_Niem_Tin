@@ -21,7 +21,7 @@ interface HostLobbyViewProps {
   onDestroyRoom?: () => void;
   loading?: boolean;
   errorMessage?: string | null;
-  onSimulateFullLobby?: () => void;
+  onSimulateFullLobby?: (excludeTeam?: number) => void;
 }
 
 export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
@@ -227,13 +227,24 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
 
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             {onSimulateFullLobby && !isReadyToStart && (
-              <button
-                type="button"
-                onClick={onSimulateFullLobby}
-                className="px-3 py-2 rounded-xl bg-night-800 hover:bg-night-700 text-trust-300 text-xs font-bold border border-trust-600/40 transition-all cursor-pointer"
-              >
-                ⚡ Test: Giả lập 8 đội sẵn sàng
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onSimulateFullLobby(1)}
+                  className="px-3 py-2 rounded-xl bg-night-800 hover:bg-night-700 text-trust-300 text-xs font-bold border border-trust-600/40 transition-all cursor-pointer"
+                  title="Giả lập các đội 2-8 và chừa Đội 1 cho bạn tham gia"
+                >
+                  ⚡ Giả lập 7 đội (chừa Đội 1)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSimulateFullLobby()}
+                  className="px-2.5 py-2 rounded-xl bg-night-900 hover:bg-night-800 text-slate-400 hover:text-slate-200 text-xs font-medium border border-night-700 transition-all cursor-pointer"
+                  title="Giả lập toàn bộ 8 đội để bắt đầu ván ngay"
+                >
+                  Đủ 8 đội
+                </button>
+              </div>
             )}
 
             {onDestroyRoom && (

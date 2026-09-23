@@ -6,10 +6,12 @@ import { AnswerResultView } from "../../components/player/AnswerResultView";
 export function PlayerResultPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { activeRole, activeQuestion, questionDetail, publicState } = usePlayerGame();
+  const { activeRole, activeQuestion, questionDetail, publicState, privateState } = usePlayerGame();
 
   const isCorrectParam = searchParams.get("correct");
-  const isCorrect = isCorrectParam !== "false"; // defaults to true unless explicitly false
+  const isCorrect = privateState !== null
+    ? privateState.abilityUnlocked
+    : (isCorrectParam !== null ? isCorrectParam === "true" : true);
 
   const onProceed = () => {
     if (isCorrect) {

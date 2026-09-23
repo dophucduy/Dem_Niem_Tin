@@ -43,6 +43,10 @@ export const RoleRevealView: React.FC<RoleRevealViewProps> = ({
   const [unsealed, setUnsealed] = useState<boolean>(false);
   const [confirmed, setConfirmed] = useState<boolean>(isReady);
 
+  React.useEffect(() => {
+    if (isReady) setConfirmed(true);
+  }, [isReady]);
+
   const roleInfo: RoleInfo = ROLE_DEFINITIONS[role] || {
     role,
     faction,

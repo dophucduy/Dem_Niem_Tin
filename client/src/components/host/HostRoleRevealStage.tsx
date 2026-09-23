@@ -15,15 +15,35 @@ interface HostRoleRevealStageProps {
   teams: PublicTeam[];
   onProceedToNight: () => void;
   loading?: boolean;
+  phaseEndsAt?: number;
+  paused?: boolean;
 }
 
 export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
   teams,
   onProceedToNight,
   loading = false,
+  phaseEndsAt,
+  paused = false,
 }) => {
   const readyCount = teams.filter((t) => t.ready).length;
   const isAllReady = readyCount === teams.length && teams.length > 0;
+
+  const [secondsRemaining, setSecondsRemaining] = React.useState<number>(() => {
+    if (!phaseEndsAt) return 30;
+    return Math.max(0, Math.ceil((phaseEndsAt - Date.now()) / 1000));
+  });
+
+  React.useEffect(() => {
+    if (!phaseEndsAt || paused) return;
+    const updateTimer = () => {
+      const remaining = Math.max(0, Math.ceil((phaseEndsAt - Date.now()) / 1000));
+      setSecondsRemaining(remaining);
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 500);
+    return () => clearInterval(interval);
+  }, [phaseEndsAt, paused]);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8 py-4">
@@ -59,14 +79,30 @@ export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
           </div>
         </div>
 
-        {/* Ready Counter */}
-        <div className="flex items-center justify-center gap-3">
-          <span className="text-sm font-semibold text-slate-300">
-            Tiến độ mở niêm phong:
-          </span>
-          <span className="font-mono font-bold text-lg text-trust-400 px-3 py-1 rounded-lg bg-night-900 border border-night-700">
-            {readyCount} / {teams.length || 8} ĐỘI ĐÃ SẴN SÀNG
-          </span>
+        {/* Ready Counter & Countdown Timer */}
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-300">
+              Tiến độ mở niêm phong:
+            </span>
+            <span className="font-mono font-bold text-lg text-trust-400 px-3 py-1 rounded-lg bg-night-900 border border-night-700">
+              {readyCount} / {teams.length || 8} ĐỘI ĐÃ SẴN SÀNG
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-300">
+              Thời gian còn lại:
+            </span>
+            <span className={`font-mono font-bold text-lg px-3 py-1 rounded-lg border ${
+              secondsRemaining <= 10 
+                ? "bg-corruption-950/80 border-corruption-600 text-corruption-400 animate-pulse" 
+                : "bg-night-900 border-night-700 text-trust-300"
+            }`}>
+              <Clock className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+              {secondsRemaining}s
+            </span>
+          </div>
         </div>
       </div>
 
