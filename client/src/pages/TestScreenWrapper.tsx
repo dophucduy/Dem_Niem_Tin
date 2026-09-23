@@ -5,6 +5,8 @@ import { PlayerJoinView } from "../components/player/PlayerJoinView";
 import { PlayerLobbyView } from "../components/player/PlayerLobbyView";
 import { RoleRevealView } from "../components/player/RoleRevealView";
 import { NightQuestionView } from "../components/player/NightQuestionView";
+import { AnswerResultView } from "../components/player/AnswerResultView";
+import { NightAbilityView } from "../components/player/NightAbilityView";
 import { HostLobbyView } from "../components/host/HostLobbyView";
 import { HostRoleRevealStage } from "../components/host/HostRoleRevealStage";
 import { HostNightStage } from "../components/host/HostNightStage";
@@ -12,17 +14,27 @@ import { AppHeader } from "../components/common/AppHeader";
 import { SAMPLE_QUESTIONS } from "../data/sampleQuestions";
 import { ArrowLeft, Sparkles, RefreshCw } from "lucide-react";
 
+export type TestScreenId = 
+  | "p01" 
+  | "p02" 
+  | "p03" 
+  | "p04" 
+  | "p05a" 
+  | "p05b" 
+  | "p06" 
+  | "p06_citizen" 
+  | "h01" 
+  | "h02" 
+  | "h03";
+
 interface TestScreenWrapperProps {
-  screenId: "p01" | "p02" | "p03" | "p04" | "h01" | "h02" | "h03";
+  screenId: TestScreenId;
 }
 
 export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }) => {
   const { role: urlRole } = useParams<{ role?: string }>();
 
-  // State for P01 test
-  const [p01Joined, setP01Joined] = useState(false);
-
-  // State for P03 test
+  // State for P03 & P05/P06 tests
   const validRole = (urlRole && ["INSPECTOR", "CORRUPTOR", "LAW", "WHISTLEBLOWER", "OVERSIGHT", "SPECIAL_6", "SPECIAL_7"].includes(urlRole))
     ? (urlRole as Role)
     : "INSPECTOR";
@@ -72,7 +84,7 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
             URL: /test/{screenId}{urlRole ? `/${urlRole}` : ""}
           </span>
 
-          {screenId === "p03" && (
+          {(screenId === "p03" || screenId === "p05a" || screenId === "p05b" || screenId === "p06") && (
             <div className="flex items-center gap-1.5">
               <span className="text-slate-400 font-medium">Đổi vai:</span>
               <select
@@ -98,7 +110,7 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
                   setTrust((t) => Math.min(100, t + 15));
                   setTrustDelta(15);
                 }}
-                className="px-2 py-0.5 rounded bg-righteous-950 text-righteous-400 border border-righteous-700 font-bold"
+                className="px-2 py-0.5 rounded bg-righteous-950 text-righteous-400 border border-righteous-700 font-bold cursor-pointer"
               >
                 +15% Trust
               </button>
@@ -107,7 +119,7 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
                   setTrust((t) => Math.max(0, t - 15));
                   setTrustDelta(-15);
                 }}
-                className="px-2 py-0.5 rounded bg-corruption-950 text-corruption-400 border border-corruption-700 font-bold"
+                className="px-2 py-0.5 rounded bg-corruption-950 text-corruption-400 border border-corruption-700 font-bold cursor-pointer"
               >
                 -15% Trust
               </button>
@@ -122,7 +134,7 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
         roomCode="NT8892"
         teamDisplayName={!isHostScreen ? "Đội 4" : undefined}
         phase={
-          screenId === "h03" || screenId === "p04"
+          screenId === "h03" || screenId === "p04" || screenId === "p05a" || screenId === "p05b" || screenId === "p06" || screenId === "p06_citizen"
             ? "NIGHT"
             : screenId === "h02" || screenId === "p03"
             ? "NIGHT"
@@ -141,10 +153,9 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
           <PlayerJoinView
             initialRoomCode="NT8892"
             initialTeamNumber={4}
-            occupiedTeams={[1, 2]} // Team 1 and 2 already taken to test collision
+            occupiedTeams={[1, 2]}
             onJoin={(code, team, name) => {
               alert(`Xác nhận tham gia test: Phòng ${code}, Đội ${team}, Tên: ${name || "Mặc định"}`);
-              setP01Joined(true);
             }}
           />
         )}
@@ -175,6 +186,51 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
             onSubmitAnswer={(selectedIdx) => {
               alert(`Test sự kiện nộp đáp án: Lựa chọn index ${selectedIdx} (Đáp án ${['A', 'B', 'C', 'D'][selectedIdx]})`);
             }}
+          />
+        )}
+
+        {screenId === "p05a" && (
+          <AnswerResultView
+            isCorrect={true}
+            role={selectedRole}
+            roundNumber={1}
+            questionText={SAMPLE_QUESTIONS[0].text}
+            explanation={SAMPLE_QUESTIONS[0].explanation}
+            onProceed={() => alert("Test sự kiện: Chuyển sang Màn hình Hành động Ban đêm (P-06)")}
+          />
+        )}
+
+        {screenId === "p05b" && (
+          <AnswerResultView
+            isCorrect={false}
+            role={selectedRole}
+            roundNumber={1}
+            questionText={SAMPLE_QUESTIONS[0].text}
+            correctOptionText={SAMPLE_QUESTIONS[0].options[SAMPLE_QUESTIONS[0].correctOption]}
+            explanation={SAMPLE_QUESTIONS[0].explanation}
+            onProceed={() => alert("Test sự kiện: Tiếp tục đêm với tư cách Công dân")}
+          />
+        )}
+
+        {screenId === "p06" && (
+          <NightAbilityView
+            role={selectedRole}
+            effectiveState="SPECIAL"
+            myTeamNumber={4}
+            teams={mockTeams}
+            onExecuteAbility={(targetTeam) => {
+              alert(`Test sự kiện thực thi năng lực: Đã chọn mục tiêu ĐỘI ${targetTeam}`);
+            }}
+          />
+        )}
+
+        {screenId === "p06_citizen" && (
+          <NightAbilityView
+            role={selectedRole}
+            effectiveState="CITIZEN"
+            myTeamNumber={4}
+            teams={mockTeams}
+            onExecuteAbility={() => {}}
           />
         )}
 
@@ -216,4 +272,3 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
     </div>
   );
 };
-
