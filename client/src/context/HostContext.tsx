@@ -28,6 +28,8 @@ export interface HostContextType {
   handleCreateRoom: () => void;
   handleStartGame: () => void;
   handleResetRoom: () => void;
+  handleDestroyRoom: () => void;
+  handleSimulateFullLobby: () => void;
   runGameCommand: (command: "pause" | "resume" | "skip" | "restart" | "end") => void;
   teams: any[];
 }
@@ -44,21 +46,21 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
-  const mockTeams = Array.from({ length: 8 }, (_, i) => ({
+  const emptyTeams = Array.from({ length: 8 }, (_, i) => ({
     id: `team-${i + 1}`,
     teamNumber: i + 1,
-    displayName: i < 5 ? `Nhóm ${i + 1}` : undefined,
-    connected: i < 6,
-    ready: i < 4,
+    displayName: undefined,
+    connected: false,
+    ready: false,
     eliminated: false,
   }));
 
   const mockLobby: LobbyState = {
     roomId: "host-room-mock",
-    roomCode: hostSession?.roomCode || "NT8892",
+    roomCode: hostSession?.roomCode || "",
     status: "LOBBY",
-    teams: mockTeams as any,
-    connectedCount: 6,
+    teams: emptyTeams as any,
+    connectedCount: 0,
     capacity: 8,
   };
 
@@ -87,7 +89,12 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setLobby(res.data.room);
           setPublicState(res.data.publicState ?? null);
           setErrorMessage(null);
-        } else setErrorMessage(res.error.message);
+        } else {
+          localStorage.removeItem(HOST_STORAGE_KEY);
+          setHostSession(null);
+          setLobby(null);
+          setErrorMessage(res.error?.message || "Phiên phòng học trước đó đã kết thúc.");
+        }
       });
     };
     socket.on("connect", reconnect);
@@ -101,22 +108,37 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleCreateRoom = () => {
     setLoading(true);
     setErrorMessage(null);
-    if (!socket.connected) socket.connect();
-    socket.emit(CLIENT_EVENTS.CREATE_ROOM, { hostName: "Giảng viên" }, (res: Ack<CreateRoomResult>) => {
-      setLoading(false);
-      if (!res.ok) {
-        setErrorMessage(res.error.message || "Không thể tạo phòng.");
-        return;
-      }
-      const session = {
-        roomCode: res.data.room.roomCode,
-        hostSessionToken: res.data.hostSessionToken,
-      };
-      localStorage.setItem(HOST_STORAGE_KEY, JSON.stringify(session));
-      setHostSession(session);
-      setLobby(res.data.room);
-      setPublicState(null);
-    });
+
+    const doCreate = () => {
+      socket.emit(CLIENT_EVENTS.CREATE_ROOM, { hostName: "Giảng viên" }, (res: Ack<CreateRoomResult>) => {
+        setLoading(false);
+        if (!res.ok) {
+          setErrorMessage(res.error?.message || "Không thể tạo phòng.");
+          return;
+        }
+        const session = {
+          roomCode: res.data.room.roomCode,
+          hostSessionToken: res.data.hostSessionToken,
+        };
+        localStorage.setItem(HOST_STORAGE_KEY, JSON.stringify(session));
+        setHostSession(session);
+        setLobby(res.data.room);
+        setPublicState(null);
+      });
+    };
+
+    if (!socket.connected) {
+      socket.connect();
+      socket.once("connect", doCreate);
+      setTimeout(() => {
+        if (!socket.connected) {
+          setLoading(false);
+          setErrorMessage("Không thể kết nối đến máy chủ trò chơi. Vui lòng kiểm tra lại mạng.");
+        }
+      }, 3500);
+    } else {
+      doCreate();
+    }
   };
 
   const handleStartGame = () => {
@@ -147,6 +169,14 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const handleDestroyRoom = () => {
+    localStorage.removeItem(HOST_STORAGE_KEY);
+    setHostSession(null);
+    setLobby(null);
+    setPublicState(null);
+    setErrorMessage(null);
+  };
+
   const runGameCommand = (command: "pause" | "resume" | "skip" | "restart" | "end") => {
     if (!hostSession) return;
     setLoading(true);
@@ -164,19 +194,38 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (command === "end") socket.emit(CLIENT_EVENTS.END_GAME, hostSession, acknowledge);
   };
 
-  const teams = publicState?.teams ?? lobby?.teams ?? mockTeams;
+  const handleSimulateFullLobby = () => {
+    const targetLobby = lobby || mockLobby;
+    const simulatedTeams = Array.from({ length: 8 }, (_, i) => ({
+      id: `sim-team-${i + 1}`,
+      teamNumber: i + 1,
+      displayName: `Đội ${i + 1} (Test)`,
+      connected: true,
+      ready: true,
+      eliminated: false,
+    }));
+    setLobby({
+      ...targetLobby,
+      teams: simulatedTeams as any,
+      connectedCount: 8,
+    });
+  };
+
+  const teams = publicState?.teams ?? lobby?.teams ?? emptyTeams;
 
   return (
     <HostContext.Provider
       value={{
         hostSession,
-        lobby: lobby || mockLobby,
+        lobby,
         publicState,
         loading,
         errorMessage,
         handleCreateRoom,
         handleStartGame,
         handleResetRoom,
+        handleDestroyRoom,
+        handleSimulateFullLobby,
         runGameCommand,
         teams,
       }}

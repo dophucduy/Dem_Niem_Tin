@@ -8,7 +8,8 @@ import {
   Check, 
   RefreshCw, 
   Shield, 
-  AlertCircle 
+  AlertCircle,
+  LogOut
 } from "lucide-react";
 import { LobbyState } from "@dem-niem-tin/shared";
 import { GameButton } from "../common/GameButton";
@@ -17,14 +18,20 @@ interface HostLobbyViewProps {
   lobby: LobbyState;
   onStartGame: () => void;
   onResetRoom?: () => void;
+  onDestroyRoom?: () => void;
   loading?: boolean;
+  errorMessage?: string | null;
+  onSimulateFullLobby?: () => void;
 }
 
 export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
   lobby,
   onStartGame,
   onResetRoom,
+  onDestroyRoom,
   loading = false,
+  errorMessage = null,
+  onSimulateFullLobby,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
@@ -142,6 +149,7 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
           {Array.from({ length: 8 }, (_, i) => i + 1).map((teamNum) => {
             const team = lobby.teams.find((t) => t.teamNumber === teamNum);
             const isConnected = !!team?.connected;
+            const isTeamReady = !!team?.ready;
 
             return (
               <div
@@ -150,7 +158,9 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
                   p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden
                   ${
                     isConnected
-                      ? "bg-night-900/90 border-trust-500/40 text-white shadow-lg"
+                      ? isTeamReady
+                        ? "bg-night-900/95 border-righteous-500/50 text-white shadow-lg ring-1 ring-righteous-500/20"
+                        : "bg-night-900/90 border-trust-500/40 text-white shadow-lg"
                       : "bg-night-950/40 border-night-800/80 text-slate-600 border-dashed"
                   }
                 `}
@@ -162,10 +172,17 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
                   </span>
                   <div className="flex items-center gap-1.5">
                     {isConnected ? (
-                      <span className="flex items-center gap-1 text-[11px] font-bold text-righteous-400">
-                        <span className="w-2 h-2 rounded-full bg-righteous-400 animate-pulse" />
-                        ONLINE
-                      </span>
+                      isTeamReady ? (
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-righteous-400">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          SẴN SÀNG
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400">
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                          ONLINE
+                        </span>
+                      )
                     ) : (
                       <span className="text-[11px] font-medium text-slate-600">
                         CHỜ KẾT NỐI
@@ -181,7 +198,7 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
 
                 {/* Display Name or Status */}
                 <div className="text-xs text-slate-400 truncate">
-                  {team?.displayName || (isConnected ? "Sẵn sàng tham gia" : "Chưa có thiết bị kết nối")}
+                  {team?.displayName || (isConnected ? (isTeamReady ? "Đã sẵn sàng thi đấu" : "Đang chờ bấm sẵn sàng") : "Chưa có thiết bị kết nối")}
                 </div>
               </div>
             );
@@ -190,33 +207,68 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
       </div>
 
       {/* Host Controls */}
-      <div className="glass-panel rounded-2xl p-6 border border-night-700 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="text-xs text-slate-400">
-          <span className="font-bold text-slate-300">Ghi chú cho Giảng viên:</span> Nhấn bắt đầu khi cả 8 đội đã xác nhận vị trí chỗ ngồi và kết nối thiết bị.
-        </div>
+      <div className="glass-panel rounded-2xl p-6 border border-night-700 space-y-4">
+        {errorMessage && (
+          <div className="p-3 rounded-xl bg-corruption-950/80 border border-corruption-600/50 flex items-center gap-2 text-corruption-300 text-xs sm:text-sm">
+            <AlertCircle className="w-4 h-4 shrink-0 text-corruption-400" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          {onResetRoom && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-xs text-slate-400">
+            <span className="font-bold text-slate-300">Quy tắc bắt đầu:</span> Yêu cầu đủ 8 đội kết nối và bấm sẵn sàng trên điện thoại.
+            {!isReadyToStart && (
+              <span className="text-amber-400 block sm:inline sm:ml-2">
+                (Thiếu {8 - connectedCount} đội kết nối, {8 - readyCount} đội sẵn sàng)
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            {onSimulateFullLobby && !isReadyToStart && (
+              <button
+                type="button"
+                onClick={onSimulateFullLobby}
+                className="px-3 py-2 rounded-xl bg-night-800 hover:bg-night-700 text-trust-300 text-xs font-bold border border-trust-600/40 transition-all cursor-pointer"
+              >
+                ⚡ Test: Giả lập 8 đội sẵn sàng
+              </button>
+            )}
+
+            {onDestroyRoom && (
+              <GameButton
+                variant="outline"
+                size="md"
+                onClick={onDestroyRoom}
+                icon={<LogOut className="w-4 h-4 text-corruption-400" />}
+              >
+                Đóng phòng & Tạo mới
+              </GameButton>
+            )}
+
+            {onResetRoom && (
+              <GameButton
+                variant="outline"
+                size="md"
+                onClick={onResetRoom}
+                icon={<RefreshCw className="w-4 h-4" />}
+              >
+                Làm mới phòng
+              </GameButton>
+            )}
+
             <GameButton
-              variant="outline"
-              size="md"
-              onClick={onResetRoom}
-              icon={<RefreshCw className="w-4 h-4" />}
+              variant="primary"
+              size="lg"
+              onClick={onStartGame}
+              disabled={!isReadyToStart || loading}
+              loading={loading}
+              icon={<Play className="w-5 h-5 fill-night-950" />}
             >
-              Làm mới phòng
+              BẮT ĐẦU TRÒ CHƠI
             </GameButton>
-          )}
-
-          <GameButton
-            variant="primary"
-            size="lg"
-            onClick={onStartGame}
-            disabled={!isReadyToStart || loading}
-            loading={loading}
-            icon={<Play className="w-5 h-5 fill-night-950" />}
-          >
-            BẮT ĐẦU TRÒ CHƠI
-          </GameButton>
+          </div>
         </div>
       </div>
 
