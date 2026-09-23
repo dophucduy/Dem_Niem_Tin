@@ -27,3 +27,16 @@ export const hostAuthSchema = z.object({
   roomCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/),
   hostSessionToken: z.string().min(32).max(512),
 });
+
+export const answerQuestionSchema = z.object({
+  questionId: z.string().min(1).max(128),
+  selectedOption: z.number().int().min(0).max(3),
+});
+
+export const useAbilitySchema = z.object({
+  targetTeamId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
+});
+
+export const submitVoteSchema = z.object({
+  targetTeamId: z.string().regex(/^[a-f\d]{24}$/i),
+});

@@ -190,14 +190,14 @@ export function PlayerPage() {
   };
 
   const handleSubmitAnswer = (selectedOption: number) => {
-    const currentQ = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
-    if (socket.connected && session) {
+    const currentQ = publicState?.activeQuestion;
+    if (socket.connected && currentQ) {
       socket.emit(CLIENT_EVENTS.ANSWER_QUESTION, {
-        playerId: session.playerId,
         questionId: currentQ.id,
-        answer: currentQ.options[selectedOption],
+        selectedOption,
       }, (res) => {
-        if (!res.ok) setErrorMessage(res.error.message);
+        if (res.ok) setPrivateState(res.data.privateState);
+        else setErrorMessage(res.error.message);
       });
     }
   };

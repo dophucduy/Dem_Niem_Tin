@@ -22,6 +22,7 @@ const playerSchema = new Schema(
     socketId: { type: String, select: false },
     effectiveState: { type: String, enum: ["SPECIAL", "CITIZEN"], default: "SPECIAL", select: false },
     abilityUnlocked: { type: Boolean, default: false, select: false },
+    answeredRound: { type: Number, min: 1, max: 3, select: false },
     privateResults: {
       type: [
         {

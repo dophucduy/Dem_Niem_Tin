@@ -175,6 +175,28 @@ export type SetReadyResult = {
   room: LobbyState;
 };
 
+export type AnswerQuestionPayload = {
+  questionId: string;
+  selectedOption: number;
+};
+
+export type AnswerQuestionResult = {
+  correct: boolean;
+  privateState: PrivatePlayerState;
+};
+
+export type UseAbilityPayload = {
+  targetTeamId?: string;
+};
+
+export type SubmitVotePayload = {
+  targetTeamId: string;
+};
+
+export type PlayerActionResult = {
+  accepted: true;
+};
+
 export type HostAuthPayload = {
   roomCode: string;
   hostSessionToken: string;

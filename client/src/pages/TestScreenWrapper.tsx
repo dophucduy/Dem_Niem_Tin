@@ -14,7 +14,6 @@ import { SAMPLE_QUESTIONS } from "../data/sampleQuestions";
 import { ArrowLeft, Sparkles, RefreshCw } from "lucide-react";
 
 interface TestScreenWrapperProps {
-  screenId: "p01" | "p02" | "p03" | "p04" | "h01" | "h02" | "h03";
   screenId: "p01" | "p02" | "p03" | "p04" | "p05a" | "p05b" | "h01" | "h02" | "h03";
 }
 

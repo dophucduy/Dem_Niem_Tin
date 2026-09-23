@@ -1,6 +1,7 @@
 import { QuestionModel } from "../models/Question.js";
 import { PlayerModel } from "../models/Player.js";
 import type { QuestionDifficulty } from "@dem-niem-tin/shared";
+import { ServiceError } from "./errors.js";
 
 export async function getRandomQuestion(difficulty: QuestionDifficulty) {
   const questions = await QuestionModel.aggregate([
@@ -19,22 +20,31 @@ export async function getRandomQuestion(difficulty: QuestionDifficulty) {
   };
 }
 
-export async function submitAnswer(playerId: string, questionId: string, answer: string): Promise<boolean> {
+export async function submitAnswer(
+  gameId: string,
+  round: number,
+  playerId: string,
+  questionId: string,
+  selectedOption: number,
+): Promise<boolean> {
   const question = await QuestionModel.findById(questionId).select("+correctAnswer").exec();
-  if (!question) {
-    throw new Error("Question not found");
-  }
+  if (!question) throw new ServiceError("VALIDATION_ERROR", "Question not found");
+  const answer = question.options[selectedOption];
+  if (answer === undefined) throw new ServiceError("VALIDATION_ERROR", "Answer option is invalid");
 
   const isCorrect = question.correctAnswer === answer;
-
-  if (isCorrect) {
-    await PlayerModel.findByIdAndUpdate(playerId, { abilityUnlocked: true });
-  } else {
-    await PlayerModel.findByIdAndUpdate(playerId, { 
-      abilityUnlocked: false, 
-      effectiveState: "CITIZEN" 
-    });
-  }
+  const player = await PlayerModel.findOneAndUpdate(
+    { _id: playerId, gameId, answeredRound: { $ne: round } },
+    {
+      $set: {
+        answeredRound: round,
+        abilityUnlocked: isCorrect,
+        effectiveState: isCorrect ? "SPECIAL" : "CITIZEN",
+      },
+    },
+    { new: true },
+  );
+  if (!player) throw new ServiceError("CONFLICT", "Question already answered or player is invalid");
 
   return isCorrect;
 }
@@ -42,6 +52,6 @@ export async function submitAnswer(playerId: string, questionId: string, answer:
 export async function resetKnowledgeState(gameId: string): Promise<void> {
   await PlayerModel.updateMany(
     { gameId },
-    { abilityUnlocked: false, effectiveState: "SPECIAL" }
+    { $set: { abilityUnlocked: false, effectiveState: "SPECIAL" }, $unset: { answeredRound: 1 } }
   );
 }

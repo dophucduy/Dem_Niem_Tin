@@ -7,6 +7,7 @@ import {
 import type { Server, Socket } from "socket.io";
 import { ServiceError } from "../services/errors.js";
 import { RoomService } from "../services/roomService.js";
+import { GameRuntimeService } from "../services/gameRuntimeService.js";
 import {
   createRoomSchema,
   joinRoomSchema,
@@ -36,6 +37,7 @@ export function registerLobbyHandlers(
   io: GameServer,
   socket: GameSocket,
   roomService: RoomService,
+  runtimeService?: GameRuntimeService,
 ): void {
   socket.on(CLIENT_EVENTS.CREATE_ROOM, async (rawPayload, acknowledge) => {
     const parsed = createRoomSchema.safeParse(rawPayload);
@@ -98,12 +100,18 @@ export function registerLobbyHandlers(
         playerId: reconnected.playerId,
       };
       await socket.join(roomChannel(reconnected.roomId));
+      const [privateState, publicState] = await Promise.all([
+        runtimeService?.getPrivateState(reconnected.roomId, reconnected.playerId),
+        runtimeService?.reconnectHost(reconnected.roomId),
+      ]);
       acknowledge({
         ok: true,
         data: {
           room: reconnected.lobby,
           playerId: reconnected.playerId,
           teamId: reconnected.teamId,
+          privateState,
+          publicState,
         },
       });
       io.to(roomChannel(reconnected.roomId)).emit(SERVER_EVENTS.LOBBY_UPDATED, reconnected.lobby);
