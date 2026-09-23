@@ -91,6 +91,7 @@ export type PublicGameState = {
   activeQuestion?: PublicQuestion;
   publicClues: Clue[];
   publicEvents: PublicGameEvent[];
+  factionWin?: Faction | "DRAW";
 };
 
 export type PrivateResult = {

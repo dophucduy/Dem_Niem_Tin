@@ -291,7 +291,8 @@ export class GameRuntimeService {
       await game.save();
     }
     if (state.phase === "NIGHT_RESOLUTION") {
-      await resolveStoredNightActions(game._id.toString(), state.round);
+      const trustDelta = await resolveStoredNightActions(game._id.toString(), state.round);
+      if (trustDelta) engine.updateTrust(trustDelta);
     }
     if (state.phase === "VOTE_RESULT") {
       const trustDelta = await tallyVotes(game._id.toString(), state.round);
@@ -356,7 +357,7 @@ export class GameRuntimeService {
     const lobby = await this.roomService.getLobby(roomId);
     const state = engine.snapshot;
     const game = await GameModel.findOne({ roomId }).select("activeQuestion publicClues publicEvents").lean();
-    return {
+    const publicState: PublicGameState = {
       roomId,
       roomCode: lobby.roomCode,
       phase: engine.publicPhase,
@@ -394,5 +395,19 @@ export class GameRuntimeService {
         }),
       ),
     };
+
+    if (engine.publicPhase === "FINAL" && game && game._id) {
+      const corruptors = await PlayerModel.find({ gameId: game._id, role: "CORRUPTOR" }).lean();
+      let corruptorsAlive = 0;
+      for (const corruptor of corruptors) {
+        const team = await TeamModel.findById(corruptor.teamId).lean();
+        if (team && !team.eliminated) {
+          corruptorsAlive++;
+        }
+      }
+      publicState.factionWin = corruptorsAlive === 0 ? "TRUST" : "CORRUPTION";
+    }
+
+    return publicState;
   }
 }

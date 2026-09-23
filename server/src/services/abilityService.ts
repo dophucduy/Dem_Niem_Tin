@@ -2,6 +2,7 @@ import { PlayerModel } from "../models/Player.js";
 import { GameModel } from "../models/Game.js";
 import { Types } from "mongoose";
 import { ActionModel, TeamModel } from "../models/index.js";
+import { EFFECT_CONFIG, TRUST_EVENTS } from "@dem-niem-tin/shared";
 import { ServiceError } from "./errors.js";
 
 export type NightAction = {
@@ -43,9 +44,9 @@ export async function submitAbility(
   }
 }
 
-export async function resolveStoredNightActions(gameId: string, round: number): Promise<void> {
+export async function resolveStoredNightActions(gameId: string, round: number): Promise<number> {
   const actions = await ActionModel.find({ gameId, round }).lean();
-  await resolveNightActions(
+  return resolveNightActions(
     gameId,
     actions.map((action) => ({
       playerId: action.playerId.toString(),
@@ -54,7 +55,7 @@ export async function resolveStoredNightActions(gameId: string, round: number): 
   );
 }
 
-export async function resolveNightActions(gameId: string, actions: NightAction[]): Promise<void> {
+export async function resolveNightActions(gameId: string, actions: NightAction[]): Promise<number> {
   const game = await GameModel.findById(gameId).exec();
   if (!game) throw new Error("Game not found");
 
@@ -81,6 +82,8 @@ export async function resolveNightActions(gameId: string, actions: NightAction[]
 
   const newClues = [];
 
+  let totalTrustDelta = 0;
+
   // 3. Process actions
   for (const action of validActions) {
     const actor = players.find(p => p._id.toString() === action.playerId)!;
@@ -96,10 +99,11 @@ export async function resolveNightActions(gameId: string, actions: NightAction[]
             createdAt: Date.now()
           });
         } else {
+          totalTrustDelta += TRUST_EVENTS.corruptionSuccess;
           actor.privateResults.push({
             id: new Types.ObjectId().toString(),
             type: "ACTION_SUCCESS",
-            message: "You successfully targeted the player.",
+            message: EFFECT_CONFIG.corruptor.message,
             createdAt: Date.now()
           });
         }
@@ -112,7 +116,7 @@ export async function resolveNightActions(gameId: string, actions: NightAction[]
           actor.privateResults.push({
             id: new Types.ObjectId().toString(),
             type: "INSPECTION_RESULT",
-            message: `Target role is ${target.role}`, // Basic implementation
+            message: target.role === "CORRUPTOR" ? "CÓ DẤU HIỆU ĐÁNG NGỜ" : "CHƯA PHÁT HIỆN DẤU HIỆU",
             createdAt: Date.now()
           });
         }
@@ -122,22 +126,54 @@ export async function resolveNightActions(gameId: string, actions: NightAction[]
         newClues.push({
           id: new Types.ObjectId().toString(),
           title: "Whistleblower Leak",
-          description: "A piece of information has been leaked.",
+          description: "Một manh mối về sự bất thường đã được tiết lộ.",
           visibility: "public",
           revealedAt: Date.now()
         });
         break;
       }
       case "OVERSIGHT":
-      case "SPECIAL_6":
-      case "SPECIAL_7":
         actor.privateResults.push({
           id: new Types.ObjectId().toString(),
           type: "INFO",
-          message: `${action.role} action recorded.`,
+          message: EFFECT_CONFIG.oversight.message,
           createdAt: Date.now()
         });
         break;
+      case "SPECIAL_6": {
+        if (!action.targetId) break;
+        const target = players.find(p => p._id.toString() === action.targetId);
+        if (target) {
+          const isCorruptor = target.role === "CORRUPTOR";
+          actor.privateResults.push({
+            id: new Types.ObjectId().toString(),
+            type: "INFO",
+            message: isCorruptor ? EFFECT_CONFIG.special6.corruptorMessage : EFFECT_CONFIG.special6.defaultMessage,
+            createdAt: Date.now()
+          });
+        }
+        break;
+      }
+      case "SPECIAL_7": {
+        if (!action.targetId) break;
+        const targetTeam = await TeamModel.findById(players.find(p => p._id.toString() === action.targetId)?.teamId).lean();
+        if (targetTeam) {
+          newClues.push({
+            id: new Types.ObjectId().toString(),
+            title: EFFECT_CONFIG.special7.publicClueTitle,
+            description: EFFECT_CONFIG.special7.publicClueDescription(targetTeam.displayName || targetTeam.teamNumber.toString()),
+            visibility: "public",
+            revealedAt: Date.now()
+          });
+          actor.privateResults.push({
+            id: new Types.ObjectId().toString(),
+            type: "INFO",
+            message: "Bạn đã phát lệnh yêu cầu minh bạch công khai.",
+            createdAt: Date.now()
+          });
+        }
+        break;
+      }
     }
   }
 
@@ -151,4 +187,6 @@ export async function resolveNightActions(gameId: string, actions: NightAction[]
       $push: { publicClues: { $each: newClues } }
     });
   }
+
+  return totalTrustDelta;
 }
