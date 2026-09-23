@@ -82,8 +82,13 @@ const starterQuestions = [
     category: "Trách nhiệm giải trình",
     difficulty: "hard",
     text: "Cơ chế bảo vệ người tố cáo hiệu quả cần ưu tiên điều gì?",
-    options: ["Công khai danh tính", "Bảo mật danh tính và chống trả đũa", "Trì hoãn xử lý", "Chuyển trách nhiệm cho người tố cáo"],
-    correctAnswer: "Bảo mật danh tính và chống trả đũa",
+    options: [
+      "Chuyển người tố cáo sang đơn vị khác ngay lập tức",
+      "Bảo mật danh tính, chống trả đũa và có kênh xử lý độc lập",
+      "Chỉ tiếp nhận tố cáo khi có đầy đủ bằng chứng",
+      "Công khai tiến độ xử lý để tăng tính minh bạch",
+    ],
+    correctAnswer: "Bảo mật danh tính, chống trả đũa và có kênh xử lý độc lập",
   },
 ] as const;
 
@@ -126,10 +131,22 @@ async function setupDatabase(): Promise<void> {
   }
 
   const questions = database.collection("questions");
-  if ((await questions.countDocuments()) === 0) {
-    await questions.insertMany(starterQuestions.map((question) => ({ ...question, createdAt: new Date(), updatedAt: new Date() })));
-    console.log(`Seeded questions: ${starterQuestions.length}`);
-  }
+  const now = new Date();
+  const questionResult = await questions.bulkWrite(
+    starterQuestions.map((question) => ({
+      updateOne: {
+        filter: { text: question.text },
+        update: {
+          $set: { ...question, updatedAt: now },
+          $setOnInsert: { createdAt: now },
+        },
+        upsert: true,
+      },
+    })),
+  );
+  console.log(
+    `Questions synchronized: ${questionResult.matchedCount} updated, ${questionResult.upsertedCount} inserted`,
+  );
 
   console.log(`Database setup complete: ${database.databaseName}`);
 }
