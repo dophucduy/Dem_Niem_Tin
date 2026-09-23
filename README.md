@@ -41,7 +41,7 @@ npm.cmd test
 
 ## Phạm vi hiện tại
 
-Foundation, MongoDB setup, shared contracts, Room, Team, Player session, reconnect, realtime lobby presence, ready state, authoritative GameEngine và Host runtime controls đã được triển khai. Role, question, ability và voting chưa được triển khai; Trust hiện có state/timer server-side nhưng chưa có gameplay events.
+Foundation, MongoDB setup, shared contracts, Room/Session/Reconnect, authoritative GameEngine, Host controls, role assignment, private player state, knowledge question, ability submission và voting backend đã được triển khai. Gameplay socket lấy danh tính từ session server-side; client không được tự khai báo `playerId` hoặc `gameId`.
 
 Khi mạng không ổn định, có thể tạo `.env.local` để override Atlas bằng MongoDB local mà không sửa `.env`:
 
@@ -62,4 +62,28 @@ Game runtime integration tests use the same flag:
 ```powershell
 $env:RUN_DB_INTEGRATION='true'
 npm.cmd run test --workspace server -- tests/gameRuntime.integration.test.ts
+```
+
+## Deploy Render + Vercel
+
+Repository có sẵn `render.yaml` và `vercel.json`.
+
+Render cần các biến môi trường:
+
+```env
+MONGODB_URI=<MongoDB Atlas URI>
+MONGODB_DB_NAME=dem-niem-tin-dev
+CLIENT_ORIGIN=https://<project>.vercel.app
+```
+
+Vercel cần biến môi trường build-time:
+
+```env
+VITE_SERVER_URL=https://<service>.onrender.com
+```
+
+Sau khi cấu hình Atlas URI, chạy một lần để tạo indexes và seed bộ câu hỏi mặc định nếu collection đang rỗng:
+
+```powershell
+npm.cmd run db:setup --workspace server
 ```

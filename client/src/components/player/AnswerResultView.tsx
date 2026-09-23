@@ -9,7 +9,9 @@ import {
   RotateCcw, 
   ArrowRight, 
   BookOpen, 
-  Sparkles 
+  ShieldAlert, 
+  Sparkles,
+  HelpCircle 
 } from "lucide-react";
 import { GameButton } from "../common/GameButton";
 
@@ -27,6 +29,7 @@ export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
   isCorrect,
   role,
   roundNumber = 1,
+  questionText,
   correctOptionText,
   explanation,
   onProceed,
@@ -164,7 +167,7 @@ export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
         </div>
       </div>
 
-      {/* Learning Knowledge Box */}
+      {/* Learning Knowledge Box (Show correct answer and explanation) */}
       <div className="p-4 rounded-2xl bg-night-950/80 border border-night-700 space-y-2 text-left">
         {correctOptionText && (
           <div className="text-xs text-slate-300 pb-2 border-b border-night-800">

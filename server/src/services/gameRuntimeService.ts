@@ -1,14 +1,23 @@
 import {
   GAME_CONFIG,
   type GamePhase,
+  type AnswerQuestionPayload,
+  type AnswerQuestionResult,
+  type PrivatePlayerState,
   type PublicGameState,
+  type SubmitVotePayload,
+  type UseAbilityPayload,
 } from "@dem-niem-tin/shared";
 import mongoose from "mongoose";
 import { GameEngine, GameScheduler, type GameStateSnapshot } from "../game/index.js";
-import { GameModel, PlayerModel, RoomModel, TeamModel } from "../models/index.js";
+import { ActionModel, GameModel, PlayerModel, RoomModel, TeamModel, VoteModel } from "../models/index.js";
+import { resolveStoredNightActions, submitAbility } from "./abilityService.js";
 import { ServiceError } from "./errors.js";
 import { RoomService } from "./roomService.js";
 import { hashSessionToken } from "./session.js";
+import { assignRoles, getPrivatePlayerState } from "./roleService.js";
+import { getRandomQuestion, resetKnowledgeState, submitAnswer } from "./knowledgeService.js";
+import { submitVote, tallyVotes } from "./votingService.js";
 
 type Runtime = {
   engine: GameEngine;
@@ -60,8 +69,6 @@ export class GameRuntimeService {
       throw new ServiceError("CONFLICT", "All eight teams must be ready before starting");
     }
 
-    await this.hooks.beforeGameStart?.(roomId);
-
     const engine = new GameEngine();
     const state = engine.startGame();
     const game = await GameModel.create({
@@ -76,12 +83,65 @@ export class GameRuntimeService {
       PlayerModel.updateMany({ roomId }, { $set: { gameId: game._id } }),
       TeamModel.updateMany({ roomId }, { $set: { gameId: game._id } }),
     ]);
+    await assignRoles(game._id.toString());
+    await this.hooks.beforeGameStart?.(roomId);
 
     const runtime = this.createRuntime(roomId, engine);
     this.runtimes.set(roomId, runtime);
     runtime.scheduler.schedule();
-    await this.hooks.onPhaseChanged?.(roomId, state);
+    await this.preparePhase(roomId, engine);
+    await this.hooks.onPhaseChanged?.(roomId, engine.snapshot);
     return this.buildPublicState(roomId, engine);
+  }
+
+  async getPrivateState(roomId: string, playerId: string): Promise<PrivatePlayerState | undefined> {
+    const player = await PlayerModel.findOne({ _id: playerId, roomId }).lean();
+    if (!player) throw new ServiceError("UNAUTHORIZED", "Player session is invalid");
+    return (await getPrivatePlayerState(playerId)) ?? undefined;
+  }
+
+  async answerQuestion(
+    roomId: string,
+    playerId: string,
+    payload: AnswerQuestionPayload,
+  ): Promise<AnswerQuestionResult> {
+    const runtime = await this.requireRuntimePhase(roomId, "NIGHT_KNOWLEDGE");
+    const game = await GameModel.findOne({ roomId, status: "ACTIVE" }).lean();
+    if (!game?.activeQuestion || game.activeQuestion.id !== payload.questionId) {
+      throw new ServiceError("VALIDATION_ERROR", "Question is no longer active");
+    }
+    const correct = await submitAnswer(
+      game._id.toString(),
+      runtime.engine.snapshot.round,
+      playerId,
+      payload.questionId,
+      payload.selectedOption,
+    );
+    const privateState = await this.getPrivateState(roomId, playerId);
+    if (!privateState) throw new ServiceError("INTERNAL_ERROR", "Private player state is unavailable");
+    const answered = await PlayerModel.countDocuments({
+      gameId: game._id,
+      answeredRound: runtime.engine.snapshot.round,
+    });
+    if (answered === GAME_CONFIG.teamCount) await this.advanceCurrentPhase(roomId, runtime);
+    return { correct, privateState };
+  }
+
+  async useAbility(roomId: string, playerId: string, payload: UseAbilityPayload): Promise<void> {
+    const runtime = await this.requireRuntimePhase(roomId, "NIGHT_ABILITY");
+    const game = await GameModel.findOne({ roomId, status: "ACTIVE" }).select("_id").lean();
+    if (!game) throw new ServiceError("INVALID_PHASE", "Active game was not found");
+    await submitAbility(game._id.toString(), runtime.engine.snapshot.round, playerId, payload.targetTeamId);
+  }
+
+  async submitVote(roomId: string, playerId: string, payload: SubmitVotePayload): Promise<void> {
+    const runtime = await this.requireRuntimePhase(roomId, "VOTING");
+    const game = await GameModel.findOne({ roomId, status: "ACTIVE" }).select("_id").lean();
+    if (!game) throw new ServiceError("INVALID_PHASE", "Active game was not found");
+    await submitVote(game._id.toString(), runtime.engine.snapshot.round, playerId, payload.targetTeamId);
+    const votes = await VoteModel.countDocuments({ gameId: game._id, round: runtime.engine.snapshot.round });
+    const activePlayers = await TeamModel.countDocuments({ gameId: game._id, eliminated: false });
+    if (votes === activePlayers) await this.advanceCurrentPhase(roomId, runtime);
   }
 
   async reconnectHost(roomId: string): Promise<PublicGameState | undefined> {
@@ -106,7 +166,7 @@ export class GameRuntimeService {
   }
 
   async restartRound(roomId: string): Promise<PublicGameState> {
-    const state = await this.mutate(roomId, (engine) => engine.restartRound());
+    const state = await this.mutate(roomId, (engine) => engine.restartRound(), true);
     this.runtimes.get(roomId)?.scheduler.schedule();
     return state;
   }
@@ -119,7 +179,9 @@ export class GameRuntimeService {
       this.persist(roomId, state, "FINISHED"),
       RoomModel.updateOne({ _id: roomId }, { $set: { status: "FINISHED" } }),
     ]);
-    await this.hooks.onPhaseChanged?.(roomId, state);
+    await this.preparePhase(roomId, runtime.engine);
+    await this.persist(roomId, runtime.engine.snapshot, "FINISHED");
+    await this.hooks.onPhaseChanged?.(roomId, runtime.engine.snapshot);
     const publicState = await this.buildPublicState(roomId, runtime.engine);
     await this.publish(roomId, publicState);
     return publicState;
@@ -144,13 +206,15 @@ export class GameRuntimeService {
       PlayerModel.updateMany(
         { roomId },
         {
-          $unset: { gameId: 1, role: 1, faction: 1 },
+          $unset: { gameId: 1, role: 1, faction: 1, answeredRound: 1 },
         },
       ),
       TeamModel.updateMany(
         { roomId },
         { $set: { ready: false, eliminated: false }, $unset: { gameId: 1 } },
       ),
+      ActionModel.deleteMany(game ? { gameId: game._id } : { roomId }),
+      VoteModel.deleteMany(game ? { gameId: game._id } : { roomId }),
       gameplayCleanup,
     ]);
 
@@ -160,10 +224,13 @@ export class GameRuntimeService {
   private async mutate(
     roomId: string,
     mutation: (engine: GameEngine) => GameStateSnapshot,
+    forcePrepare = false,
   ): Promise<PublicGameState> {
     const runtime = await this.requireRuntime(roomId);
     runtime.scheduler.cancel();
-    const state = mutation(runtime.engine);
+    mutation(runtime.engine);
+    await this.preparePhase(roomId, runtime.engine, forcePrepare);
+    const state = runtime.engine.snapshot;
     await this.persist(roomId, state);
     await this.hooks.onPhaseChanged?.(roomId, state);
     const publicState = await this.buildPublicState(roomId, runtime.engine);
@@ -173,8 +240,10 @@ export class GameRuntimeService {
 
   private createRuntime(roomId: string, engine: GameEngine): Runtime {
     const scheduler = new GameScheduler(engine, async (state) => {
-      await this.persist(roomId, state);
-      await this.hooks.onPhaseChanged?.(roomId, state);
+      await this.preparePhase(roomId, engine);
+      const preparedState = engine.snapshot;
+      await this.persist(roomId, preparedState);
+      await this.hooks.onPhaseChanged?.(roomId, preparedState);
       await this.publish(roomId, await this.buildPublicState(roomId, engine));
     });
     return { engine, scheduler };
@@ -184,6 +253,47 @@ export class GameRuntimeService {
     const runtime = await this.getOrRecoverRuntime(roomId);
     if (!runtime) throw new ServiceError("INVALID_PHASE", "No active game exists for this room");
     return runtime;
+  }
+
+  private async requireRuntimePhase(roomId: string, phase: GamePhase): Promise<Runtime> {
+    const runtime = await this.requireRuntime(roomId);
+    if (runtime.engine.snapshot.phase !== phase) {
+      throw new ServiceError("INVALID_PHASE", `Action is only allowed during ${phase}`);
+    }
+    return runtime;
+  }
+
+  private async advanceCurrentPhase(roomId: string, runtime: Runtime): Promise<void> {
+    runtime.scheduler.cancel();
+    runtime.engine.advance();
+    await this.preparePhase(roomId, runtime.engine);
+    await this.persist(roomId, runtime.engine.snapshot);
+    await this.hooks.onPhaseChanged?.(roomId, runtime.engine.snapshot);
+    await this.publish(roomId, await this.buildPublicState(roomId, runtime.engine));
+    runtime.scheduler.schedule();
+  }
+
+  private async preparePhase(roomId: string, engine: GameEngine, force = false): Promise<void> {
+    const state = engine.snapshot;
+    const game = await GameModel.findOne({ roomId, status: "ACTIVE" }).select("_id phase activeQuestion");
+    if (!game) return;
+    if (!force && game.phase === state.phase) return;
+
+    if (state.phase === "NIGHT_KNOWLEDGE") {
+      await resetKnowledgeState(game._id.toString());
+      const difficulty = state.round === 1 ? "easy" : state.round === 2 ? "medium" : "hard";
+      const question = await getRandomQuestion(difficulty);
+      if (!question) throw new ServiceError("CONFLICT", `No ${difficulty} question is configured`);
+      game.activeQuestion = question;
+      await game.save();
+    }
+    if (state.phase === "NIGHT_RESOLUTION") {
+      await resolveStoredNightActions(game._id.toString(), state.round);
+    }
+    if (state.phase === "VOTE_RESULT") {
+      const trustDelta = await tallyVotes(game._id.toString(), state.round);
+      if (trustDelta) engine.updateTrust(trustDelta);
+    }
   }
 
   private async getOrRecoverRuntime(roomId: string): Promise<Runtime | undefined> {
@@ -242,6 +352,7 @@ export class GameRuntimeService {
   private async buildPublicState(roomId: string, engine: GameEngine): Promise<PublicGameState> {
     const lobby = await this.roomService.getLobby(roomId);
     const state = engine.snapshot;
+    const game = await GameModel.findOne({ roomId }).select("activeQuestion publicClues publicEvents").lean();
     return {
       roomId,
       roomCode: lobby.roomCode,
@@ -252,8 +363,9 @@ export class GameRuntimeService {
       phaseEndsAt: state.phaseEndsAt,
       paused: state.paused,
       teams: lobby.teams,
-      publicClues: [],
-      publicEvents: [],
+      activeQuestion: state.phase === "NIGHT_KNOWLEDGE" ? game?.activeQuestion : undefined,
+      publicClues: game?.publicClues ?? [],
+      publicEvents: game?.publicEvents ?? [],
     };
   }
 }

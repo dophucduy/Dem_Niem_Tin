@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { GameModel, PlayerModel, RoomModel, TeamModel } from "../src/models/index.js";
+import { GameModel, PlayerModel, QuestionModel, RoomModel, TeamModel } from "../src/models/index.js";
 import { ServiceError } from "../src/services/errors.js";
 import { GameRuntimeService } from "../src/services/gameRuntimeService.js";
 import { RoomService } from "../src/services/roomService.js";
@@ -39,7 +39,20 @@ describeDatabase("GameRuntimeService integration", () => {
     return created;
   }
 
+  async function seedQuestions() {
+    await QuestionModel.insertMany(
+      ["easy", "medium", "hard"].map((difficulty) => ({
+        category: "Test",
+        difficulty,
+        text: `Integration ${difficulty} question?`,
+        options: ["A", "B", "C", "D"],
+        correctAnswer: "A",
+      })),
+    );
+  }
+
   it("authenticates the host and controls a persisted server-authoritative game", async () => {
+    await seedQuestions();
     const created = await createReadyRoom();
     const publishedPhases: string[] = [];
     const runtimeService = new GameRuntimeService(roomService, (_roomId, state) => {
@@ -93,5 +106,26 @@ describeDatabase("GameRuntimeService integration", () => {
     const recovered = await recoveredRuntime.reconnectHost(created.roomId);
     expect(recovered).toMatchObject({ phase: "LOBBY", round: 0, paused: true });
     await recoveredRuntime.resetGame(created.roomId);
+  });
+
+  it("runs exactly three rounds to FINAL without creating Night 4", async () => {
+    await seedQuestions();
+    const created = await createReadyRoom();
+    const runtime = new GameRuntimeService(roomService, () => undefined);
+    await runtime.startGame(created.roomId);
+
+    const visited: Array<{ phase: string; round: number }> = [];
+    for (let step = 0; step < 40; step += 1) {
+      const game = await GameModel.findOne({ roomId: created.roomId }).lean();
+      if (!game) throw new Error("Game disappeared during full-flow test");
+      visited.push({ phase: game.phase, round: game.round });
+      if (game.phase === "FINAL") break;
+      await runtime.skipTimer(created.roomId);
+    }
+
+    expect(visited.at(-1)).toEqual({ phase: "FINAL", round: 3 });
+    expect(visited.some((state) => state.round > 3)).toBe(false);
+    expect(visited.filter((state) => state.phase === "NIGHT_KNOWLEDGE").map((state) => state.round))
+      .toEqual([1, 2, 3]);
   });
 });

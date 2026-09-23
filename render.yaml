@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: dem-niem-tin-api
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm run build --workspace shared && npm run build --workspace server
+    startCommand: npm run start --workspace server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: dem-niem-tin-dev
+      - key: CLIENT_ORIGIN
+        sync: false

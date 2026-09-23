@@ -1,5 +1,7 @@
 import type {
   Ack,
+  AnswerQuestionPayload,
+  AnswerQuestionResult,
   CreateRoomPayload,
   CreateRoomResult,
   JoinRoomPayload,
@@ -15,6 +17,9 @@ import type {
   SetReadyPayload,
   SetReadyResult,
   ResetGameResult,
+  PlayerActionResult,
+  SubmitVotePayload,
+  UseAbilityPayload,
 } from "./types.js";
 
 export const CLIENT_EVENTS = {
@@ -70,16 +75,16 @@ export interface ClientToServerEvents {
     acknowledge: (response: Ack<SetReadyResult>) => void,
   ) => void;
   [CLIENT_EVENTS.ANSWER_QUESTION]: (
-    payload: { playerId: string; questionId: string; answer: string },
-    acknowledge: (response: Ack<{ correct: boolean }>) => void,
+    payload: AnswerQuestionPayload,
+    acknowledge: (response: Ack<AnswerQuestionResult>) => void,
   ) => void;
   [CLIENT_EVENTS.USE_ABILITY]: (
-    payload: { gameId: string; playerId: string; targetId?: string },
-    acknowledge: (response: Ack<{ success: boolean }>) => void,
+    payload: UseAbilityPayload,
+    acknowledge: (response: Ack<PlayerActionResult>) => void,
   ) => void;
   [CLIENT_EVENTS.SUBMIT_VOTE]: (
-    payload: { gameId: string; round: number; voterId: string; targetId: string },
-    acknowledge: (response: Ack<{ success: boolean }>) => void,
+    payload: SubmitVotePayload,
+    acknowledge: (response: Ack<PlayerActionResult>) => void,
   ) => void;
   [CLIENT_EVENTS.HOST_RECONNECT]: (
     payload: HostAuthPayload,

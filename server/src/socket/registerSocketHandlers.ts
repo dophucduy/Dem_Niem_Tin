@@ -20,8 +20,21 @@ type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<stri
 const roomService = new RoomService();
 
 export function registerSocketHandlers(io: GameServer): void {
-  const gameRuntimeService = new GameRuntimeService(roomService, (roomId, state) => {
+  const publishPrivateStates = async (roomId: string, runtime: GameRuntimeService) => {
+    const sockets = await io.in(`room:${roomId}`).fetchSockets();
+    await Promise.all(
+      sockets.map(async (connectedSocket) => {
+        if (connectedSocket.data.clientType !== "PLAYER" || !connectedSocket.data.playerId) return;
+        const privateState = await runtime.getPrivateState(roomId, connectedSocket.data.playerId);
+        if (privateState) connectedSocket.emit(SERVER_EVENTS.PRIVATE_STATE_UPDATED, privateState);
+      }),
+    );
+  };
+  let gameRuntimeService: GameRuntimeService;
+  gameRuntimeService = new GameRuntimeService(roomService, (roomId, state) => {
     io.to(`room:${roomId}`).emit(SERVER_EVENTS.PUBLIC_STATE_UPDATED, state);
+  }, {
+    onPhaseChanged: (roomId) => publishPrivateStates(roomId, gameRuntimeService),
   });
 
   io.on("connection", (socket: GameSocket) => {
@@ -44,7 +57,7 @@ export function registerSocketHandlers(io: GameServer): void {
       socket.emit(SERVER_EVENTS.CONNECTION_READY, payload);
     });
 
-    registerLobbyHandlers(io, socket, roomService);
+    registerLobbyHandlers(io, socket, roomService, gameRuntimeService);
     registerHostGameHandlers(io, socket, roomService, gameRuntimeService);
 
     socket.on("disconnect", async (reason) => {
@@ -57,6 +70,6 @@ export function registerSocketHandlers(io: GameServer): void {
       }
     });
 
-    registerGameHandlers(io, socket);
+    registerGameHandlers(io, socket, gameRuntimeService);
   });
 }

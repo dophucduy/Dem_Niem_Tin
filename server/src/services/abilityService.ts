@@ -1,17 +1,66 @@
 import { PlayerModel } from "../models/Player.js";
 import { GameModel } from "../models/Game.js";
 import { Types } from "mongoose";
+import { ActionModel, TeamModel } from "../models/index.js";
+import { ServiceError } from "./errors.js";
 
 export type NightAction = {
   playerId: string;
   targetId?: string;
 };
 
+export async function submitAbility(
+  gameId: string,
+  round: number,
+  playerId: string,
+  targetTeamId?: string,
+): Promise<void> {
+  const player = await PlayerModel.findOne({ _id: playerId, gameId })
+    .select("+effectiveState +abilityUnlocked")
+    .lean();
+  if (!player) throw new ServiceError("UNAUTHORIZED", "Player is not part of this game");
+  if (player.effectiveState !== "SPECIAL" || !player.abilityUnlocked) {
+    throw new ServiceError("FORBIDDEN", "Ability is not unlocked");
+  }
+
+  let targetPlayerId: Types.ObjectId | undefined;
+  if (targetTeamId) {
+    const [team, target] = await Promise.all([
+      TeamModel.findOne({ _id: targetTeamId, gameId, eliminated: false }).lean(),
+      PlayerModel.findOne({ gameId, teamId: targetTeamId }).lean(),
+    ]);
+    if (!team || !target) throw new ServiceError("VALIDATION_ERROR", "Ability target is invalid");
+    targetPlayerId = target._id;
+  }
+
+  try {
+    await ActionModel.create({ gameId, round, playerId, targetPlayerId });
+  } catch (error) {
+    if (typeof error === "object" && error && "code" in error && error.code === 11000) {
+      throw new ServiceError("CONFLICT", "Ability already submitted this round");
+    }
+    throw error;
+  }
+}
+
+export async function resolveStoredNightActions(gameId: string, round: number): Promise<void> {
+  const actions = await ActionModel.find({ gameId, round }).lean();
+  await resolveNightActions(
+    gameId,
+    actions.map((action) => ({
+      playerId: action.playerId.toString(),
+      targetId: action.targetPlayerId?.toString(),
+    })),
+  );
+}
+
 export async function resolveNightActions(gameId: string, actions: NightAction[]): Promise<void> {
   const game = await GameModel.findById(gameId).exec();
   if (!game) throw new Error("Game not found");
 
-  const players = await PlayerModel.find({ gameId }).select("+role +effectiveState +abilityUnlocked").exec();
+  const players = await PlayerModel.find({ gameId })
+    .select("+role +effectiveState +abilityUnlocked +privateResults")
+    .exec();
   
   // 1. Validate actions & collect targets
   const validActions = [];
