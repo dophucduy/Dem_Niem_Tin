@@ -174,3 +174,21 @@ export type SetReadyPayload = {
 export type SetReadyResult = {
   room: LobbyState;
 };
+
+export type HostAuthPayload = {
+  roomCode: string;
+  hostSessionToken: string;
+};
+
+export type HostReconnectResult = {
+  room: LobbyState;
+  publicState?: PublicGameState;
+};
+
+export type HostGameCommandResult = {
+  publicState: PublicGameState;
+};
+
+export type ResetGameResult = {
+  room: LobbyState;
+};

@@ -21,8 +21,11 @@ const ALLOWED_TRANSITIONS: Record<GamePhase, readonly GamePhase[]> = {
 export class GameEngine {
   private state: GameState;
 
-  constructor(private readonly config: EngineConfig = DEFAULT_ENGINE_CONFIG) {
-    this.state = this.initialState();
+  constructor(
+    private readonly config: EngineConfig = DEFAULT_ENGINE_CONFIG,
+    initialState?: GameState,
+  ) {
+    this.state = initialState ? { ...initialState } : this.initialState();
   }
 
   get snapshot(): GameStateSnapshot {
@@ -107,6 +110,11 @@ export class GameEngine {
     this.state.trust = Math.max(0, Math.min(100, this.state.trust + delta));
     this.state.revision += 1;
     return this.snapshot;
+  }
+
+  finish(now = Date.now()): GameStateSnapshot {
+    if (this.state.phase === "FINAL") return this.snapshot;
+    return this.transitionTo("FINAL", now, true);
   }
 
   reset(): GameStateSnapshot {

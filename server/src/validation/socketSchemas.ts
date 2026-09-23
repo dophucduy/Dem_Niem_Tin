@@ -22,3 +22,8 @@ export const reconnectSchema = z.object({
 export const setReadySchema = z.object({
   ready: z.boolean(),
 });
+
+export const hostAuthSchema = z.object({
+  roomCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/),
+  hostSessionToken: z.string().min(32).max(512),
+});

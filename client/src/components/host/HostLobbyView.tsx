@@ -30,7 +30,8 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
   const [showQrModal, setShowQrModal] = useState(false);
 
   const connectedCount = lobby.teams.filter((t) => t.connected).length;
-  const isReadyToStart = connectedCount === 8;
+  const readyCount = lobby.teams.filter((t) => t.connected && t.ready).length;
+  const isReadyToStart = connectedCount === 8 && readyCount === 8;
 
   // In production or LAN, players scan or access window.location.origin/?code=...
   const joinUrl = typeof window !== "undefined"
@@ -115,11 +116,11 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
 
           {isReadyToStart ? (
             <span className="text-xs font-bold text-righteous-400 px-3 py-1 rounded-full bg-righteous-950/80 border border-righteous-600/40 animate-badge-pop">
-              ✓ Đã đủ 8 đội, sẵn sàng khởi tranh!
+              ✓ Cả 8 đội đã kết nối và sẵn sàng!
             </span>
           ) : (
             <span className="text-xs text-amber-400/90 font-medium">
-              (Cần kết nối đủ 8 đội để bắt đầu trận đấu)
+              ({connectedCount}/8 kết nối • {readyCount}/8 sẵn sàng)
             </span>
           )}
         </div>

@@ -182,16 +182,22 @@ export function PlayerPage() {
 
   const handleConfirmReady = () => {
     if (socket.connected) {
-      socket.emit(CLIENT_EVENTS.READY);
+      socket.emit(CLIENT_EVENTS.READY, { ready: true }, (res) => {
+        if (res.ok) setLobby(res.data.room);
+        else setErrorMessage(res.error.message);
+      });
     }
   };
 
   const handleSubmitAnswer = (selectedOption: number) => {
     const currentQ = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
-    if (socket.connected) {
+    if (socket.connected && session) {
       socket.emit(CLIENT_EVENTS.ANSWER_QUESTION, {
+        playerId: session.playerId,
         questionId: currentQ.id,
-        selectedOption,
+        answer: currentQ.options[selectedOption],
+      }, (res) => {
+        if (!res.ok) setErrorMessage(res.error.message);
       });
     }
   };

@@ -8,9 +8,11 @@ import {
 } from "@dem-niem-tin/shared";
 import type { Server, Socket } from "socket.io";
 import { RoomService } from "../services/roomService.js";
+import { GameRuntimeService } from "../services/gameRuntimeService.js";
 import { connectionCheckSchema } from "../validation/socketSchemas.js";
 import { registerLobbyHandlers, type SocketIdentity } from "./registerLobbyHandlers.js";
 import { registerGameHandlers } from "./gameHandlers.js";
+import { registerHostGameHandlers } from "./registerHostGameHandlers.js";
 
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketIdentity>;
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketIdentity>;
@@ -18,6 +20,10 @@ type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<stri
 const roomService = new RoomService();
 
 export function registerSocketHandlers(io: GameServer): void {
+  const gameRuntimeService = new GameRuntimeService(roomService, (roomId, state) => {
+    io.to(`room:${roomId}`).emit(SERVER_EVENTS.PUBLIC_STATE_UPDATED, state);
+  });
+
   io.on("connection", (socket: GameSocket) => {
     console.log(`Socket connected: ${socket.id}`);
 
@@ -39,6 +45,7 @@ export function registerSocketHandlers(io: GameServer): void {
     });
 
     registerLobbyHandlers(io, socket, roomService);
+    registerHostGameHandlers(io, socket, roomService, gameRuntimeService);
 
     socket.on("disconnect", async (reason) => {
       console.log(`Socket disconnected: ${socket.id} (${reason})`);

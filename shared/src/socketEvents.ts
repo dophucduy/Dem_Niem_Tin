@@ -4,6 +4,9 @@ import type {
   CreateRoomResult,
   JoinRoomPayload,
   JoinRoomResult,
+  HostAuthPayload,
+  HostGameCommandResult,
+  HostReconnectResult,
   LobbyState,
   PrivatePlayerState,
   PublicGameState,
@@ -11,6 +14,7 @@ import type {
   ReconnectResult,
   SetReadyPayload,
   SetReadyResult,
+  ResetGameResult,
 } from "./types.js";
 
 export const CLIENT_EVENTS = {
@@ -22,6 +26,14 @@ export const CLIENT_EVENTS = {
   ANSWER_QUESTION: "question:answer",
   USE_ABILITY: "ability:use",
   SUBMIT_VOTE: "vote:submit",
+  HOST_RECONNECT: "host:reconnect",
+  START_GAME: "host:start-game",
+  PAUSE_GAME: "host:pause-game",
+  RESUME_GAME: "host:resume-game",
+  SKIP_TIMER: "host:skip-timer",
+  RESTART_ROUND: "host:restart-round",
+  RESET_GAME: "host:reset-game",
+  END_GAME: "host:end-game",
 } as const;
 
 export const SERVER_EVENTS = {
@@ -59,15 +71,47 @@ export interface ClientToServerEvents {
   ) => void;
   [CLIENT_EVENTS.ANSWER_QUESTION]: (
     payload: { playerId: string; questionId: string; answer: string },
-    acknowledge: (response: Ack<{ correct: boolean }>) => void
+    acknowledge: (response: Ack<{ correct: boolean }>) => void,
   ) => void;
   [CLIENT_EVENTS.USE_ABILITY]: (
     payload: { gameId: string; playerId: string; targetId?: string },
-    acknowledge: (response: Ack<{ success: boolean }>) => void
+    acknowledge: (response: Ack<{ success: boolean }>) => void,
   ) => void;
   [CLIENT_EVENTS.SUBMIT_VOTE]: (
     payload: { gameId: string; round: number; voterId: string; targetId: string },
-    acknowledge: (response: Ack<{ success: boolean }>) => void
+    acknowledge: (response: Ack<{ success: boolean }>) => void,
+  ) => void;
+  [CLIENT_EVENTS.HOST_RECONNECT]: (
+    payload: HostAuthPayload,
+    acknowledge: (response: Ack<HostReconnectResult>) => void,
+  ) => void;
+  [CLIENT_EVENTS.START_GAME]: (
+    payload: HostAuthPayload,
+    acknowledge: (response: Ack<HostGameCommandResult>) => void,
+  ) => void;
+  [CLIENT_EVENTS.PAUSE_GAME]: (
+    payload: HostAuthPayload,
+    acknowledge: (response: Ack<HostGameCommandResult>) => void,
+  ) => void;
+  [CLIENT_EVENTS.RESUME_GAME]: (
+    payload: HostAuthPayload,
+    acknowledge: (response: Ack<HostGameCommandResult>) => void,
+  ) => void;
+  [CLIENT_EVENTS.SKIP_TIMER]: (
+    payload: HostAuthPayload,
+    acknowledge: (response: Ack<HostGameCommandResult>) => void,
+  ) => void;
+  [CLIENT_EVENTS.RESTART_ROUND]: (
+    payload: HostAuthPayload,
+    acknowledge: (response: Ack<HostGameCommandResult>) => void,
+  ) => void;
+  [CLIENT_EVENTS.RESET_GAME]: (
+    payload: HostAuthPayload,
+    acknowledge: (response: Ack<ResetGameResult>) => void,
+  ) => void;
+  [CLIENT_EVENTS.END_GAME]: (
+    payload: HostAuthPayload,
+    acknowledge: (response: Ack<HostGameCommandResult>) => void,
   ) => void;
 }
 

@@ -41,11 +41,25 @@ npm.cmd test
 
 ## Phạm vi hiện tại
 
-Foundation, MongoDB setup, shared contracts, Room, Team, Player session, reconnect, realtime lobby presence và ready state đã được triển khai. Role, question, ability, voting và Trust chưa được triển khai.
+Foundation, MongoDB setup, shared contracts, Room, Team, Player session, reconnect, realtime lobby presence, ready state, authoritative GameEngine và Host runtime controls đã được triển khai. Role, question, ability và voting chưa được triển khai; Trust hiện có state/timer server-side nhưng chưa có gameplay events.
+
+Khi mạng không ổn định, có thể tạo `.env.local` để override Atlas bằng MongoDB local mà không sửa `.env`:
+
+```env
+MONGODB_URI=mongodb://127.0.0.1:27017
+MONGODB_DB_NAME=dem-niem-tin-dev
+```
 
 Chạy Room/Session integration tests với MongoDB local:
 
 ```powershell
 $env:RUN_DB_INTEGRATION='true'
 npm.cmd run test --workspace server -- tests/room.integration.test.ts
+```
+
+Game runtime integration tests use the same flag:
+
+```powershell
+$env:RUN_DB_INTEGRATION='true'
+npm.cmd run test --workspace server -- tests/gameRuntime.integration.test.ts
 ```

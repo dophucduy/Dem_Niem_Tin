@@ -26,6 +26,8 @@ const gameSchema = new Schema(
     paused: { type: Boolean, default: false, required: true },
     phaseStartedAt: { type: Date },
     phaseEndsAt: { type: Date },
+    pausedRemainingMs: { type: Number, min: 0 },
+    revision: { type: Number, default: 0, min: 0, required: true },
     startedAt: { type: Date },
     finishedAt: { type: Date },
     publicClues: {

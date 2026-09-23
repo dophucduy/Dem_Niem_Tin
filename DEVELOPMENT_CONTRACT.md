@@ -45,6 +45,14 @@ Handle `ok === false` explicitly in the UI. Do not infer errors from timeouts al
 - `question:answer`
 - `ability:use`
 - `vote:submit`
+- `host:reconnect`
+- `host:start-game`
+- `host:pause-game`
+- `host:resume-game`
+- `host:skip-timer`
+- `host:restart-round`
+- `host:reset-game`
+- `host:end-game`
 
 ### Server to client
 
@@ -63,3 +71,5 @@ Room creation, joining, reconnection, disconnect presence, and ready-state handl
 - Dev 2 should call role assignment when `startGame()` succeeds and reset per-night ability state when the engine enters `NIGHT_KNOWLEDGE`.
 - Do not put role or ability resolution inside `GameEngine`; inject gameplay work around phase transitions.
 - The Host UI should display server timestamps from snapshots and must not advance phases locally.
+- Every Host command must include `roomCode` and `hostSessionToken`; never authorize Host controls from socket identity alone.
+- `GameRuntimeService` persists phase changes and exposes `beforeGameStart` / `onPhaseChanged` hooks for role assignment and per-night resets.

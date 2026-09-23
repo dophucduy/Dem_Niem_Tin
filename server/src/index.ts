@@ -30,7 +30,17 @@ const io = new Server<
 
 registerSocketHandlers(io);
 
-httpServer.listen(env.PORT, "0.0.0.0", () => {
-  console.log(`Server listening on http://0.0.0.0:${env.PORT}`);
-  void connectDatabase(env.MONGODB_URI, env.MONGODB_DB_NAME);
-});
+async function startServer(): Promise<void> {
+  const databaseConnected = await connectDatabase(env.MONGODB_URI, env.MONGODB_DB_NAME);
+  if (!databaseConnected) {
+    console.error("Server startup aborted because MongoDB is unavailable");
+    process.exitCode = 1;
+    return;
+  }
+
+  httpServer.listen(env.PORT, "0.0.0.0", () => {
+    console.log(`Server listening on http://0.0.0.0:${env.PORT}`);
+  });
+}
+
+void startServer();

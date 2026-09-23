@@ -1,7 +1,13 @@
 import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
-dotenv.config({ path: new URL("../../../.env", import.meta.url) });
+dotenv.config({
+  path: [
+    fileURLToPath(new URL("../../../.env.local", import.meta.url)),
+    fileURLToPath(new URL("../../../.env", import.meta.url)),
+  ],
+});
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
