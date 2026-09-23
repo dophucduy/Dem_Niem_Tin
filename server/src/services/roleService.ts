@@ -32,7 +32,7 @@ export async function assignRoles(gameId: string): Promise<void> {
           $set: { 
             role, 
             faction, 
-            effectiveState: "SPECIAL", 
+            effectiveState: "SPECIAL" as const,
             abilityUnlocked: false,
             privateResults: []
           } 
