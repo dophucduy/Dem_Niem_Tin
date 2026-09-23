@@ -6,6 +6,7 @@ import {
   LobbyState, 
   PublicGameState,
   PrivatePlayerState,
+  PublicQuestion,
   Role,
   Faction,
   Ack 
@@ -14,7 +15,10 @@ import { socket } from "../services/socket";
 import { PlayerJoinView } from "../components/player/PlayerJoinView";
 import { PlayerLobbyView } from "../components/player/PlayerLobbyView";
 import { RoleRevealView } from "../components/player/RoleRevealView";
+import { NightQuestionView } from "../components/player/NightQuestionView";
 import { AppHeader } from "../components/common/AppHeader";
+import { ROLE_DEFINITIONS } from "../data/roleDefinitions";
+import { SAMPLE_QUESTIONS } from "../data/sampleQuestions";
 import { Sparkles } from "lucide-react";
 
 const STORAGE_KEY = "dem_niem_tin_player_session";
@@ -26,6 +30,8 @@ interface StoredSession {
   playerId: string;
   teamId: string;
 }
+
+type PlayerScreen = "AUTO" | "P01_JOIN" | "P02_LOBBY" | "P03_ROLE" | "P04_QUESTION";
 
 export function PlayerPage() {
   const [searchParams] = useSearchParams();
@@ -46,9 +52,9 @@ export function PlayerPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Demo role state for frontend UI preview
+  // UI Test / Designer Preview state
+  const [demoScreen, setDemoScreen] = useState<PlayerScreen>("AUTO");
   const [demoRole, setDemoRole] = useState<Role>("INSPECTOR");
-  const [showRoleDemoSelector, setShowRoleDemoSelector] = useState(false);
 
   // Setup socket listeners
   useEffect(() => {
@@ -180,15 +186,35 @@ export function PlayerPage() {
     }
   };
 
-  // Determine current active role & faction
+  const handleSubmitAnswer = (selectedOption: number) => {
+    const currentQ = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
+    if (socket.connected) {
+      socket.emit(CLIENT_EVENTS.ANSWER_QUESTION, {
+        questionId: currentQ.id,
+        selectedOption,
+      });
+    }
+  };
+
+  // Determine current active role & question
   const activeRole: Role = privateState?.role || demoRole;
   const activeFaction: Faction = activeRole === "CORRUPTOR" ? "CORRUPTION" : "TRUST";
+  const roleInfo = ROLE_DEFINITIONS[activeRole];
+  const activeQuestion: PublicQuestion = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
 
-  // Check if we should display the Role Reveal view
-  const isRoleRevealPhase = 
-    privateState !== null || 
-    publicState?.phase === "LOBBY" || 
-    showRoleDemoSelector;
+  // Screen routing determination
+  let currentScreen: PlayerScreen = demoScreen;
+  if (demoScreen === "AUTO") {
+    if (!session) {
+      currentScreen = "P01_JOIN";
+    } else if (publicState?.phase === "NIGHT") {
+      currentScreen = "P04_QUESTION";
+    } else if (privateState !== null) {
+      currentScreen = "P03_ROLE";
+    } else {
+      currentScreen = "P02_LOBBY";
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-between">
@@ -198,7 +224,7 @@ export function PlayerPage() {
           roleMode="PLAYER"
           roomCode={session.roomCode}
           teamDisplayName={`Đội ${session.teamNumber}`}
-          phase={publicState?.phase || "LOBBY"}
+          phase={currentScreen === "P04_QUESTION" ? "NIGHT" : (publicState?.phase || "LOBBY")}
           round={publicState?.round || 1}
           trust={publicState?.trust || 100}
         />
@@ -206,69 +232,87 @@ export function PlayerPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        {!session ? (
+        {currentScreen === "P01_JOIN" && (
           <PlayerJoinView
             initialRoomCode={codeFromUrl}
             loading={loading}
             errorMessage={errorMessage}
             onJoin={handleJoin}
           />
-        ) : showRoleDemoSelector || privateState ? (
-          <RoleRevealView
-            role={activeRole}
-            faction={activeFaction}
-            teamNumber={session.teamNumber}
-            onConfirmReady={handleConfirmReady}
-          />
-        ) : (
+        )}
+
+        {currentScreen === "P02_LOBBY" && (
           <PlayerLobbyView
             lobby={lobby || {
               roomId: "mock",
-              roomCode: session.roomCode,
+              roomCode: session?.roomCode || "NT4821",
               status: "LOBBY",
               teams: [],
               connectedCount: 1,
               capacity: 8
             }}
-            myTeamNumber={session.teamNumber}
-            myPlayerId={session.playerId}
+            myTeamNumber={session?.teamNumber || 1}
+            myPlayerId={session?.playerId || "p1"}
             onLeaveRoom={handleLeaveRoom}
+          />
+        )}
+
+        {currentScreen === "P03_ROLE" && (
+          <RoleRevealView
+            role={activeRole}
+            faction={activeFaction}
+            teamNumber={session?.teamNumber || 1}
+            onConfirmReady={handleConfirmReady}
+          />
+        )}
+
+        {currentScreen === "P04_QUESTION" && (
+          <NightQuestionView
+            question={activeQuestion}
+            roundNumber={publicState?.round || 1}
+            abilityName={roleInfo?.abilityName || "ĐIỀU TRA"}
+            onSubmitAnswer={handleSubmitAnswer}
+            loading={loading}
           />
         )}
       </main>
 
-      {/* Development UI Preview Bar: Allows designer to test any role reveal */}
+      {/* Developer UI Preview Switcher (Only visible to help test each screen) */}
       {session && (
-        <div className="bg-night-950/90 border-t border-night-700/80 p-2.5 px-4 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="bg-night-950/95 border-t border-night-700/80 p-2.5 px-4 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 text-slate-400">
             <Sparkles className="w-3.5 h-3.5 text-trust-400" />
-            <span>Xem trước vai trò (UI Test):</span>
+            <span className="font-semibold text-slate-300">Chuyển màn hình (UI Test):</span>
             <select
-              value={activeRole}
-              onChange={(e) => {
-                setDemoRole(e.target.value as Role);
-                setShowRoleDemoSelector(true);
-              }}
-              className="bg-night-800 border border-night-600 rounded px-2 py-1 text-white font-bold text-xs outline-none"
+              value={demoScreen}
+              onChange={(e) => setDemoScreen(e.target.value as PlayerScreen)}
+              className="bg-night-800 border border-night-600 rounded px-2.5 py-1 text-white font-bold text-xs outline-none"
             >
-              <option value="INSPECTOR">Thanh Tra (Bảo vệ niềm tin)</option>
-              <option value="CORRUPTOR">Người Vụ Lợi (Tham nhũng)</option>
-              <option value="LAW">Pháp Luật (Bảo vệ niềm tin)</option>
-              <option value="WHISTLEBLOWER">Người Tố Giác (Bảo vệ niềm tin)</option>
-              <option value="OVERSIGHT">Cơ Quan Giám Sát (Bảo vệ niềm tin)</option>
-              <option value="SPECIAL_6">Giám Sát Tài Sản (Bảo vệ niềm tin)</option>
-              <option value="SPECIAL_7">Minh Bạch Thông Tin (Bảo vệ niềm tin)</option>
+              <option value="AUTO">Tự động (Theo trạng thái Game)</option>
+              <option value="P02_LOBBY">P-02: Phòng chờ (Lobby)</option>
+              <option value="P03_ROLE">P-03: Mở vai trò (Role Reveal)</option>
+              <option value="P04_QUESTION">P-04: Thử thách tri thức đêm</option>
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowRoleDemoSelector(!showRoleDemoSelector)}
-              className="px-2.5 py-1 rounded bg-night-800 hover:bg-night-700 border border-night-600 text-trust-300 font-bold"
-            >
-              {showRoleDemoSelector ? "Về phòng chờ (P-02)" : "Xem mở vai trò (P-03)"}
-            </button>
-          </div>
+          {currentScreen === "P03_ROLE" && (
+            <div className="flex items-center gap-1.5 text-slate-400">
+              <span>Đổi vai:</span>
+              <select
+                value={activeRole}
+                onChange={(e) => setDemoRole(e.target.value as Role)}
+                className="bg-night-800 border border-night-600 rounded px-2 py-1 text-trust-300 font-bold text-xs outline-none"
+              >
+                <option value="INSPECTOR">Thanh Tra</option>
+                <option value="CORRUPTOR">Người Vụ Lợi</option>
+                <option value="LAW">Pháp Luật</option>
+                <option value="WHISTLEBLOWER">Người Tố Giác</option>
+                <option value="OVERSIGHT">Cơ Quan Giám Sát</option>
+                <option value="SPECIAL_6">Giám Sát Tài Sản</option>
+                <option value="SPECIAL_7">Minh Bạch Thông Tin</option>
+              </select>
+            </div>
+          )}
         </div>
       )}
 
