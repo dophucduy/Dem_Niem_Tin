@@ -1,4 +1,4 @@
-import mongoose, { model, Schema, type InferSchemaType } from "mongoose";
+import mongoose, { model, Schema, type InferSchemaType, type Model } from "mongoose";
 
 const ROLES = [
   "CORRUPTOR",
@@ -44,4 +44,5 @@ playerSchema.index({ roomId: 1, sessionTokenHash: 1 }, { unique: true });
 
 export type PlayerDocument = InferSchemaType<typeof playerSchema>;
 
-export const PlayerModel = mongoose.models.Player ?? model("Player", playerSchema);
+export const PlayerModel =
+  (mongoose.models.Player as Model<PlayerDocument> | undefined) ?? model<PlayerDocument>("Player", playerSchema);

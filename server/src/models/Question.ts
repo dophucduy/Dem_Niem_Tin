@@ -1,4 +1,4 @@
-import mongoose, { model, Schema, type InferSchemaType } from "mongoose";
+import mongoose, { model, Schema, type InferSchemaType, type Model } from "mongoose";
 
 const questionSchema = new Schema(
   {
@@ -15,4 +15,5 @@ questionSchema.index({ difficulty: 1 });
 
 export type QuestionDocument = InferSchemaType<typeof questionSchema>;
 
-export const QuestionModel = mongoose.models.Question ?? model("Question", questionSchema);
+export const QuestionModel =
+  (mongoose.models.Question as Model<QuestionDocument> | undefined) ?? model<QuestionDocument>("Question", questionSchema);

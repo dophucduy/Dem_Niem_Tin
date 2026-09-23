@@ -1,4 +1,4 @@
-import mongoose, { model, Schema, type InferSchemaType } from "mongoose";
+import mongoose, { model, Schema, type InferSchemaType, type Model } from "mongoose";
 
 const PHASES = [
   "LOBBY",
@@ -70,4 +70,5 @@ gameSchema.index({ status: 1, updatedAt: -1 });
 
 export type GameDocument = InferSchemaType<typeof gameSchema>;
 
-export const GameModel = mongoose.models.Game ?? model("Game", gameSchema);
+export const GameModel =
+  (mongoose.models.Game as Model<GameDocument> | undefined) ?? model<GameDocument>("Game", gameSchema);
