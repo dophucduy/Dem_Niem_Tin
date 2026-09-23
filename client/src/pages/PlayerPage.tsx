@@ -10,7 +10,9 @@ import {
   Role,
   Faction,
   Ack,
-  SetReadyResult 
+  SetReadyResult,
+  AnswerQuestionResult,
+  PlayerActionResult 
 } from "@dem-niem-tin/shared";
 import { socket } from "../services/socket";
 import { PlayerJoinView } from "../components/player/PlayerJoinView";
@@ -207,12 +209,15 @@ export function PlayerPage() {
       socket.emit(
         CLIENT_EVENTS.ANSWER_QUESTION,
         {
-          playerId: session.playerId,
           questionId: currentQ.id,
-          answer: currentQ.options[selectedOption],
+          selectedOption,
         },
-        (res: Ack<{ correct: boolean }>) => {
-          if (!res.ok) setErrorMessage(res.error.message);
+        (res: Ack<AnswerQuestionResult>) => {
+          if (!res.ok) {
+            setErrorMessage(res.error.message);
+          } else {
+            setPrivateState(res.data.privateState);
+          }
         }
       );
     }
@@ -220,14 +225,13 @@ export function PlayerPage() {
 
   const handleExecuteAbility = (targetTeamNumber: number) => {
     if (socket.connected && session) {
+      const targetTeam = publicState?.teams.find((t) => t.teamNumber === targetTeamNumber);
       socket.emit(
         CLIENT_EVENTS.USE_ABILITY,
         {
-          gameId: publicState?.roomId || "game-1",
-          playerId: session.playerId,
-          targetId: `team-${targetTeamNumber}`,
+          targetTeamId: targetTeam?.id || `team-${targetTeamNumber}`,
         },
-        (res: Ack<{ success: boolean }>) => {
+        (res: Ack<PlayerActionResult>) => {
           if (!res.ok) setErrorMessage(res.error.message);
         }
       );

@@ -7,6 +7,7 @@ import { RoleRevealView } from "../components/player/RoleRevealView";
 import { NightQuestionView } from "../components/player/NightQuestionView";
 import { AnswerResultView } from "../components/player/AnswerResultView";
 import { NightAbilityView } from "../components/player/NightAbilityView";
+import { PrivateResultView } from "../components/player/PrivateResultView";
 import { HostLobbyView } from "../components/host/HostLobbyView";
 import { HostRoleRevealStage } from "../components/host/HostRoleRevealStage";
 import { HostNightStage } from "../components/host/HostNightStage";
@@ -23,12 +24,14 @@ export type TestScreenId =
   | "p05b" 
   | "p06" 
   | "p06_citizen" 
+  | "p07" 
+  | "p07_safe" 
   | "h01" 
   | "h02" 
   | "h03";
 
 interface TestScreenWrapperProps {
-  screenId: "p01" | "p02" | "p03" | "p04" | "p05a" | "p05b" | "h01" | "h02" | "h03";
+  screenId: TestScreenId;
 }
 
 export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }) => {
@@ -231,6 +234,38 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
             myTeamNumber={4}
             teams={mockTeams}
             onExecuteAbility={() => {}}
+          />
+        )}
+
+        {screenId === "p07" && (
+          <PrivateResultView
+            role={selectedRole}
+            myTeamNumber={4}
+            targetTeamNumber={5}
+            roundNumber={1}
+            result={{
+              id: "res-suspicious",
+              type: "INVESTIGATION",
+              message: "CÓ DẤU HIỆU ĐÁNG NGỜ",
+              createdAt: Date.now(),
+            }}
+            onAcknowledge={() => alert("Test sự kiện: Đã ghi nhận kết quả điều tra!")}
+          />
+        )}
+
+        {screenId === "p07_safe" && (
+          <PrivateResultView
+            role={selectedRole}
+            myTeamNumber={4}
+            targetTeamNumber={3}
+            roundNumber={1}
+            result={{
+              id: "res-safe",
+              type: "INVESTIGATION",
+              message: "CHƯA PHÁT HIỆN DẤU HIỆU",
+              createdAt: Date.now(),
+            }}
+            onAcknowledge={() => alert("Test sự kiện: Đã ghi nhận kết quả điều tra an toàn!")}
           />
         )}
 

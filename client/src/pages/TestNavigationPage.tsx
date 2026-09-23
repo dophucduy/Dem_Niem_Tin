@@ -12,14 +12,15 @@ import {
   Lock,
   Moon,
   CheckCircle2,
-  Zap
+  Zap,
+  ShieldAlert
 } from "lucide-react";
 
 export function TestNavigationPage() {
   const playerScreens = [
     {
       code: "P-01",
-      path: "/test/p01",
+      path: "/player",
       name: "Tham gia phòng (Player Join)",
       desc: "Nhập mã phòng, chọn 1 trong 8 đội, nhập tên đại diện.",
       icon: Users,
@@ -27,7 +28,7 @@ export function TestNavigationPage() {
     },
     {
       code: "P-02",
-      path: "/test/p02",
+      path: "/player/lobby",
       name: "Phòng chờ đội chơi (Player Lobby)",
       desc: "Hiển thị đội của mình, danh sách 8 đội trong lớp, trạng thái kết nối.",
       icon: Users,
@@ -35,24 +36,24 @@ export function TestNavigationPage() {
     },
     {
       code: "P-03",
-      path: "/test/p03",
+      path: "/player/role",
       name: "Mở niêm phong vai trò (Role Reveal)",
       desc: "Chạm mở phong bì sáp bảo mật, xem vai trò, kỹ năng, lời dặn của Bác.",
       icon: Lock,
       badge: "Mobile 360px+",
       sublinks: [
-        { label: "Thanh Tra", path: "/test/p03/INSPECTOR" },
-        { label: "Người Vụ Lợi", path: "/test/p03/CORRUPTOR" },
-        { label: "Pháp Luật", path: "/test/p03/LAW" },
-        { label: "Người Tố Giác", path: "/test/p03/WHISTLEBLOWER" },
-        { label: "Cơ Quan Giám Sát", path: "/test/p03/OVERSIGHT" },
-        { label: "Giám Sát Tài Sản", path: "/test/p03/SPECIAL_6" },
-        { label: "Minh Bạch Thông Tin", path: "/test/p03/SPECIAL_7" },
+        { label: "Thanh Tra", path: "/player/role/INSPECTOR" },
+        { label: "Người Vụ Lợi", path: "/player/role/CORRUPTOR" },
+        { label: "Pháp Luật", path: "/player/role/LAW" },
+        { label: "Người Tố Giác", path: "/player/role/WHISTLEBLOWER" },
+        { label: "Cơ Quan Giám Sát", path: "/player/role/OVERSIGHT" },
+        { label: "Giám Sát Tài Sản", path: "/player/role/SPECIAL_6" },
+        { label: "Minh Bạch Thông Tin", path: "/player/role/SPECIAL_7" },
       ],
     },
     {
       code: "P-04",
-      path: "/test/p04",
+      path: "/player/night/question",
       name: "Thử thách tri thức ban đêm (Night Question)",
       desc: "4 nút đáp án A, B, C, D to bản, đồng hồ đêm, xác nhận nộp bài.",
       icon: HelpCircle,
@@ -60,7 +61,7 @@ export function TestNavigationPage() {
     },
     {
       code: "P-05A",
-      path: "/test/p05a",
+      path: "/player/night/result?correct=true",
       name: "Mở khóa Năng lực (Đáp án ĐÚNG)",
       desc: "Banner xanh rực rỡ, kỹ năng sẵn sàng thực thi, giải thích chuyên đề.",
       icon: CheckCircle2,
@@ -68,7 +69,7 @@ export function TestNavigationPage() {
     },
     {
       code: "P-05B",
-      path: "/test/p05b",
+      path: "/player/night/result?correct=false",
       name: "Công dân Tạm thời (Đáp án SAI)",
       desc: "Khóa kỹ năng trong đêm, giữ nguyên vai trò gốc, cơ hội mở khóa lại ở đêm sau.",
       icon: Lock,
@@ -76,7 +77,7 @@ export function TestNavigationPage() {
     },
     {
       code: "P-06",
-      path: "/test/p06",
+      path: "/player/night/ability",
       name: "Thực thi Quyền năng Đêm (Ability Action)",
       desc: "Lưới 8 đội mục tiêu, chọn mục tiêu thi hành, modal xác nhận bảo mật.",
       icon: Zap,
@@ -84,10 +85,26 @@ export function TestNavigationPage() {
     },
     {
       code: "P-06-C",
-      path: "/test/p06_citizen",
+      path: "/player/night/observe",
       name: "Quan sát Đêm (Chế độ Công dân)",
       desc: "Góc nhìn đêm yên bình cho đội trả lời sai câu hỏi tri thức.",
       icon: Moon,
+      badge: "Mobile 360px+",
+    },
+    {
+      code: "P-07",
+      path: "/player/night/private-result?status=suspicious",
+      name: "Kết quả Mật Riêng tư (Có dấu hiệu đáng ngờ)",
+      desc: "Báo cáo điều tra tuyệt mật, cảnh báo nguy cơ, hướng dẫn chiến thuật thảo luận.",
+      icon: ShieldAlert,
+      badge: "Mobile 360px+",
+    },
+    {
+      code: "P-07-S",
+      path: "/player/night/private-result?status=safe",
+      name: "Kết quả Mật Riêng tư (Chưa phát hiện dấu hiệu)",
+      desc: "Báo cáo điều tra an toàn, hướng dẫn bảo vệ và điều tra các đối tượng khác.",
+      icon: CheckCircle2,
       badge: "Mobile 360px+",
     },
   ];
@@ -95,7 +112,7 @@ export function TestNavigationPage() {
   const hostScreens = [
     {
       code: "H-01",
-      path: "/test/h01",
+      path: "/host",
       name: "Phòng chờ Giảng viên (Host Lobby)",
       desc: "Mã phòng khổng lồ, bảng mã QR, trạng thái đèn online 8 đội.",
       icon: Monitor,
@@ -103,7 +120,7 @@ export function TestNavigationPage() {
     },
     {
       code: "H-02",
-      path: "/test/h02",
+      path: "/host/role-reveal",
       name: "Giai đoạn Mở niêm phong vai trò (Role Reveal Stage)",
       desc: "Hướng dẫn bảo mật cho cả lớp, theo dõi tiến độ xem vai trò của 8 đội.",
       icon: Lock,
@@ -111,7 +128,7 @@ export function TestNavigationPage() {
     },
     {
       code: "H-03",
-      path: "/test/h03",
+      path: "/host/night",
       name: "Trình chiếu Câu hỏi Ban đêm (Night Stage)",
       desc: "Bảng câu hỏi khổng lồ, đồng hồ đếm ngược, thang đo Niềm tin, tiến độ nộp bài.",
       icon: Moon,
