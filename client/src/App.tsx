@@ -27,6 +27,8 @@ export default function App() {
         <Route path="/test/p04" element={<TestScreenWrapper screenId="p04" />} />
         <Route path="/test/p05a" element={<TestScreenWrapper screenId="p05a" />} />
         <Route path="/test/p05b" element={<TestScreenWrapper screenId="p05b" />} />
+        <Route path="/test/p06" element={<TestScreenWrapper screenId="p06" />} />
+        <Route path="/test/p06_citizen" element={<TestScreenWrapper screenId="p06_citizen" />} />
 
         {/* Test từng màn hình Giảng viên (Projector 1080p) */}
         <Route path="/test/h01" element={<TestScreenWrapper screenId="h01" />} />

@@ -11,7 +11,8 @@ import {
   Users,
   Lock,
   Moon,
-  CheckCircle2
+  CheckCircle2,
+  Zap
 } from "lucide-react";
 
 export function TestNavigationPage() {
@@ -71,6 +72,22 @@ export function TestNavigationPage() {
       name: "Công dân Tạm thời (Đáp án SAI)",
       desc: "Khóa kỹ năng trong đêm, giữ nguyên vai trò gốc, cơ hội mở khóa lại ở đêm sau.",
       icon: Lock,
+      badge: "Mobile 360px+",
+    },
+    {
+      code: "P-06",
+      path: "/test/p06",
+      name: "Thực thi Quyền năng Đêm (Ability Action)",
+      desc: "Lưới 8 đội mục tiêu, chọn mục tiêu thi hành, modal xác nhận bảo mật.",
+      icon: Zap,
+      badge: "Mobile 360px+",
+    },
+    {
+      code: "P-06-C",
+      path: "/test/p06_citizen",
+      name: "Quan sát Đêm (Chế độ Công dân)",
+      desc: "Góc nhìn đêm yên bình cho đội trả lời sai câu hỏi tri thức.",
+      icon: Moon,
       badge: "Mobile 360px+",
     },
   ];

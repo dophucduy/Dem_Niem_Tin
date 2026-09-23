@@ -9,13 +9,16 @@ import {
   PublicQuestion,
   Role,
   Faction,
-  Ack 
+  Ack,
+  SetReadyResult 
 } from "@dem-niem-tin/shared";
 import { socket } from "../services/socket";
 import { PlayerJoinView } from "../components/player/PlayerJoinView";
 import { PlayerLobbyView } from "../components/player/PlayerLobbyView";
 import { RoleRevealView } from "../components/player/RoleRevealView";
 import { NightQuestionView } from "../components/player/NightQuestionView";
+import { AnswerResultView } from "../components/player/AnswerResultView";
+import { NightAbilityView } from "../components/player/NightAbilityView";
 import { AppHeader } from "../components/common/AppHeader";
 import { ROLE_DEFINITIONS } from "../data/roleDefinitions";
 import { SAMPLE_QUESTIONS } from "../data/sampleQuestions";
@@ -31,7 +34,16 @@ interface StoredSession {
   teamId: string;
 }
 
-type PlayerScreen = "AUTO" | "P01_JOIN" | "P02_LOBBY" | "P03_ROLE" | "P04_QUESTION";
+type PlayerScreen = 
+  | "AUTO" 
+  | "P01_JOIN" 
+  | "P02_LOBBY" 
+  | "P03_ROLE" 
+  | "P04_QUESTION" 
+  | "P05A_CORRECT" 
+  | "P05B_WRONG" 
+  | "P06_ABILITY" 
+  | "P06_CITIZEN";
 
 export function PlayerPage() {
   const [searchParams] = useSearchParams();
@@ -182,7 +194,7 @@ export function PlayerPage() {
 
   const handleConfirmReady = () => {
     if (socket.connected) {
-      socket.emit(CLIENT_EVENTS.READY, { ready: true }, (res) => {
+      socket.emit(CLIENT_EVENTS.READY, { ready: true }, (res: Ack<SetReadyResult>) => {
         if (res.ok) setLobby(res.data.room);
         else setErrorMessage(res.error.message);
       });
@@ -190,15 +202,35 @@ export function PlayerPage() {
   };
 
   const handleSubmitAnswer = (selectedOption: number) => {
-    const currentQ = publicState?.activeQuestion;
-    if (socket.connected && currentQ) {
-      socket.emit(CLIENT_EVENTS.ANSWER_QUESTION, {
-        questionId: currentQ.id,
-        selectedOption,
-      }, (res) => {
-        if (res.ok) setPrivateState(res.data.privateState);
-        else setErrorMessage(res.error.message);
-      });
+    const currentQ = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
+    if (socket.connected && session) {
+      socket.emit(
+        CLIENT_EVENTS.ANSWER_QUESTION,
+        {
+          playerId: session.playerId,
+          questionId: currentQ.id,
+          answer: currentQ.options[selectedOption],
+        },
+        (res: Ack<{ correct: boolean }>) => {
+          if (!res.ok) setErrorMessage(res.error.message);
+        }
+      );
+    }
+  };
+
+  const handleExecuteAbility = (targetTeamNumber: number) => {
+    if (socket.connected && session) {
+      socket.emit(
+        CLIENT_EVENTS.USE_ABILITY,
+        {
+          gameId: publicState?.roomId || "game-1",
+          playerId: session.playerId,
+          targetId: `team-${targetTeamNumber}`,
+        },
+        (res: Ack<{ success: boolean }>) => {
+          if (!res.ok) setErrorMessage(res.error.message);
+        }
+      );
     }
   };
 
@@ -222,6 +254,13 @@ export function PlayerPage() {
     }
   }
 
+  const isNightHeader = 
+    currentScreen === "P04_QUESTION" || 
+    currentScreen === "P05A_CORRECT" || 
+    currentScreen === "P05B_WRONG" || 
+    currentScreen === "P06_ABILITY" || 
+    currentScreen === "P06_CITIZEN";
+
   return (
     <div className="min-h-screen flex flex-col justify-between">
       {/* Header */}
@@ -230,7 +269,7 @@ export function PlayerPage() {
           roleMode="PLAYER"
           roomCode={session.roomCode}
           teamDisplayName={`Đội ${session.teamNumber}`}
-          phase={currentScreen === "P04_QUESTION" ? "NIGHT" : (publicState?.phase || "LOBBY")}
+          phase={isNightHeader ? "NIGHT" : (publicState?.phase || "LOBBY")}
           round={publicState?.round || 1}
           trust={publicState?.trust || 100}
         />
@@ -281,14 +320,57 @@ export function PlayerPage() {
             loading={loading}
           />
         )}
+
+        {currentScreen === "P05A_CORRECT" && (
+          <AnswerResultView
+            isCorrect={true}
+            role={activeRole}
+            roundNumber={publicState?.round || 1}
+            questionText={SAMPLE_QUESTIONS[0].text}
+            explanation={SAMPLE_QUESTIONS[0].explanation}
+            onProceed={() => setDemoScreen("P06_ABILITY")}
+          />
+        )}
+
+        {currentScreen === "P05B_WRONG" && (
+          <AnswerResultView
+            isCorrect={false}
+            role={activeRole}
+            roundNumber={publicState?.round || 1}
+            questionText={SAMPLE_QUESTIONS[0].text}
+            correctOptionText={SAMPLE_QUESTIONS[0].options[SAMPLE_QUESTIONS[0].correctOption]}
+            explanation={SAMPLE_QUESTIONS[0].explanation}
+            onProceed={() => setDemoScreen("P06_CITIZEN")}
+          />
+        )}
+
+        {currentScreen === "P06_ABILITY" && (
+          <NightAbilityView
+            role={activeRole}
+            effectiveState="SPECIAL"
+            myTeamNumber={session?.teamNumber || 1}
+            onExecuteAbility={handleExecuteAbility}
+            loading={loading}
+          />
+        )}
+
+        {currentScreen === "P06_CITIZEN" && (
+          <NightAbilityView
+            role={activeRole}
+            effectiveState="CITIZEN"
+            myTeamNumber={session?.teamNumber || 1}
+            onExecuteAbility={() => {}}
+            loading={loading}
+          />
+        )}
       </main>
 
-      {/* Developer UI Preview Switcher (Only visible to help test each screen) */}
+      {/* Developer UI Preview Switcher (Helps easily switch and verify every screen) */}
       {session && (
         <div className="bg-night-950/95 border-t border-night-700/80 p-2.5 px-4 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 text-slate-400">
             <Sparkles className="w-3.5 h-3.5 text-trust-400" />
-            <span className="font-semibold text-slate-300">Chuyển màn hình (UI Test):</span>
+            <span className="font-semibold text-slate-300">Chuyển màn hình:</span>
             <select
               value={demoScreen}
               onChange={(e) => setDemoScreen(e.target.value as PlayerScreen)}
@@ -298,27 +380,29 @@ export function PlayerPage() {
               <option value="P02_LOBBY">P-02: Phòng chờ (Lobby)</option>
               <option value="P03_ROLE">P-03: Mở vai trò (Role Reveal)</option>
               <option value="P04_QUESTION">P-04: Thử thách tri thức đêm</option>
+              <option value="P05A_CORRECT">P-05A: Trả lời ĐÚNG (Mở khóa)</option>
+              <option value="P05B_WRONG">P-05B: Trả lời SAI (Công dân)</option>
+              <option value="P06_ABILITY">P-06: Thực thi kỹ năng đêm</option>
+              <option value="P06_CITIZEN">P-06: Quan sát đêm (Công dân)</option>
             </select>
           </div>
 
-          {currentScreen === "P03_ROLE" && (
-            <div className="flex items-center gap-1.5 text-slate-400">
-              <span>Đổi vai:</span>
-              <select
-                value={activeRole}
-                onChange={(e) => setDemoRole(e.target.value as Role)}
-                className="bg-night-800 border border-night-600 rounded px-2 py-1 text-trust-300 font-bold text-xs outline-none"
-              >
-                <option value="INSPECTOR">Thanh Tra</option>
-                <option value="CORRUPTOR">Người Vụ Lợi</option>
-                <option value="LAW">Pháp Luật</option>
-                <option value="WHISTLEBLOWER">Người Tố Giác</option>
-                <option value="OVERSIGHT">Cơ Quan Giám Sát</option>
-                <option value="SPECIAL_6">Giám Sát Tài Sản</option>
-                <option value="SPECIAL_7">Minh Bạch Thông Tin</option>
-              </select>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <span>Đổi vai:</span>
+            <select
+              value={activeRole}
+              onChange={(e) => setDemoRole(e.target.value as Role)}
+              className="bg-night-800 border border-night-600 rounded px-2 py-1 text-trust-300 font-bold text-xs outline-none"
+            >
+              <option value="INSPECTOR">Thanh Tra</option>
+              <option value="CORRUPTOR">Người Vụ Lợi</option>
+              <option value="LAW">Pháp Luật</option>
+              <option value="WHISTLEBLOWER">Người Tố Giác</option>
+              <option value="OVERSIGHT">Cơ Quan Giám Sát</option>
+              <option value="SPECIAL_6">Giám Sát Tài Sản</option>
+              <option value="SPECIAL_7">Minh Bạch Thông Tin</option>
+            </select>
+          </div>
         </div>
       )}
 
