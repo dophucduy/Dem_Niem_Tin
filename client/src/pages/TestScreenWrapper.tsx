@@ -5,6 +5,7 @@ import { PlayerJoinView } from "../components/player/PlayerJoinView";
 import { PlayerLobbyView } from "../components/player/PlayerLobbyView";
 import { RoleRevealView } from "../components/player/RoleRevealView";
 import { NightQuestionView } from "../components/player/NightQuestionView";
+import { AnswerResultView } from "../components/player/AnswerResultView";
 import { HostLobbyView } from "../components/host/HostLobbyView";
 import { HostRoleRevealStage } from "../components/host/HostRoleRevealStage";
 import { HostNightStage } from "../components/host/HostNightStage";
@@ -14,6 +15,7 @@ import { ArrowLeft, Sparkles, RefreshCw } from "lucide-react";
 
 interface TestScreenWrapperProps {
   screenId: "p01" | "p02" | "p03" | "p04" | "h01" | "h02" | "h03";
+  screenId: "p01" | "p02" | "p03" | "p04" | "p05a" | "p05b" | "h01" | "h02" | "h03";
 }
 
 export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }) => {
@@ -175,6 +177,29 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
             onSubmitAnswer={(selectedIdx) => {
               alert(`Test sự kiện nộp đáp án: Lựa chọn index ${selectedIdx} (Đáp án ${['A', 'B', 'C', 'D'][selectedIdx]})`);
             }}
+          />
+        )}
+
+        {screenId === "p05a" && (
+          <AnswerResultView
+            isCorrect={true}
+            role={selectedRole}
+            roundNumber={1}
+            questionText={SAMPLE_QUESTIONS[0].text}
+            explanation={SAMPLE_QUESTIONS[0].explanation}
+            onProceed={() => alert("Test sự kiện: Chuyển sang Màn hình Hành động Ban đêm (P-06)")}
+          />
+        )}
+
+        {screenId === "p05b" && (
+          <AnswerResultView
+            isCorrect={false}
+            role={selectedRole}
+            roundNumber={1}
+            questionText={SAMPLE_QUESTIONS[0].text}
+            correctOptionText={SAMPLE_QUESTIONS[0].options[SAMPLE_QUESTIONS[0].correctOption]}
+            explanation={SAMPLE_QUESTIONS[0].explanation}
+            onProceed={() => alert("Test sự kiện: Tiếp tục đêm với tư cách Công dân")}
           />
         )}
 

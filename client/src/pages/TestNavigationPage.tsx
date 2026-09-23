@@ -10,7 +10,8 @@ import {
   HelpCircle,
   Users,
   Lock,
-  Moon
+  Moon,
+  CheckCircle2
 } from "lucide-react";
 
 export function TestNavigationPage() {
@@ -54,6 +55,22 @@ export function TestNavigationPage() {
       name: "Thử thách tri thức ban đêm (Night Question)",
       desc: "4 nút đáp án A, B, C, D to bản, đồng hồ đêm, xác nhận nộp bài.",
       icon: HelpCircle,
+      badge: "Mobile 360px+",
+    },
+    {
+      code: "P-05A",
+      path: "/test/p05a",
+      name: "Mở khóa Năng lực (Đáp án ĐÚNG)",
+      desc: "Banner xanh rực rỡ, kỹ năng sẵn sàng thực thi, giải thích chuyên đề.",
+      icon: CheckCircle2,
+      badge: "Mobile 360px+",
+    },
+    {
+      code: "P-05B",
+      path: "/test/p05b",
+      name: "Công dân Tạm thời (Đáp án SAI)",
+      desc: "Khóa kỹ năng trong đêm, giữ nguyên vai trò gốc, cơ hội mở khóa lại ở đêm sau.",
+      icon: Lock,
       badge: "Mobile 360px+",
     },
   ];
