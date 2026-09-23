@@ -7,14 +7,24 @@ import { Scale, Plus, AlertCircle } from "lucide-react";
 
 export function HostLobbyPage() {
   const navigate = useNavigate();
-  const { lobby, hostSession, loading, errorMessage, handleCreateRoom, handleStartGame, handleResetRoom } = useHostGame();
+  const { 
+    lobby, 
+    hostSession, 
+    loading, 
+    errorMessage, 
+    handleCreateRoom, 
+    handleStartGame, 
+    handleResetRoom, 
+    handleDestroyRoom,
+    handleSimulateFullLobby 
+  } = useHostGame();
 
   const onStart = () => {
     handleStartGame();
     navigate("/host/role-reveal");
   };
 
-  if (!hostSession && !lobby) {
+  if (!hostSession || !lobby) {
     return (
       <div className="w-full max-w-lg mx-auto text-center space-y-6">
         <div className="glass-panel-elevated rounded-3xl p-8 sm:p-10 border border-trust-500/40 space-y-6 shadow-2xl">
@@ -59,7 +69,10 @@ export function HostLobbyPage() {
       lobby={lobby!}
       onStartGame={onStart}
       onResetRoom={handleResetRoom}
+      onDestroyRoom={handleDestroyRoom}
       loading={loading}
+      errorMessage={errorMessage}
+      onSimulateFullLobby={handleSimulateFullLobby}
     />
   );
 }

@@ -8,11 +8,14 @@ export function PlayerJoinPage() {
   const [searchParams] = useSearchParams();
   const codeFromUrl = searchParams.get("code") || "";
 
-  const { loading, errorMessage, handleJoin } = usePlayerGame();
+  const { loading, errorMessage, handleJoin, lobby } = usePlayerGame();
+
+  const occupiedTeams = lobby?.teams.filter((t) => t.connected).map((t) => t.teamNumber) || [];
 
   const onJoin = (roomCode: string, teamNumber: number, displayName?: string) => {
-    handleJoin(roomCode, teamNumber, displayName);
-    navigate("/player/lobby");
+    handleJoin(roomCode, teamNumber, displayName, () => {
+      navigate("/player/lobby");
+    });
   };
 
   return (
@@ -20,8 +23,8 @@ export function PlayerJoinPage() {
       initialRoomCode={codeFromUrl}
       loading={loading}
       errorMessage={errorMessage}
+      occupiedTeams={occupiedTeams}
       onJoin={onJoin}
     />
   );
 }
-

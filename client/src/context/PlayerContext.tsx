@@ -35,9 +35,10 @@ export interface PlayerContextType {
   loading: boolean;
   errorMessage: string | null;
   setErrorMessage: (msg: string | null) => void;
-  handleJoin: (roomCode: string, teamNumber: number, displayName?: string) => void;
+  handleJoin: (roomCode: string, teamNumber: number, displayName?: string, onSuccess?: () => void) => void;
   handleLeaveRoom: () => void;
   handleConfirmReady: () => void;
+  handleToggleReady: (ready?: boolean) => void;
   handleSubmitAnswer: (selectedOption: number) => void;
   handleExecuteAbility: (targetTeamNumber: number) => void;
   activeRole: Role;
@@ -67,22 +68,22 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<Role>("INSPECTOR");
 
-  // Mock teams for standalone UI testing
-  const mockTeams = Array.from({ length: 8 }, (_, i) => ({
+  // Initial empty teams: all 8 slots start unconnected and unready
+  const emptyTeams = Array.from({ length: 8 }, (_, i) => ({
     id: `team-${i + 1}`,
     teamNumber: i + 1,
-    displayName: i < 5 ? `Nhóm ${i + 1}` : undefined,
-    connected: i < 6,
-    ready: i < 4,
+    displayName: undefined,
+    connected: false,
+    ready: false,
     eliminated: false,
   }));
 
   const mockLobby: LobbyState = {
     roomId: "room-default",
-    roomCode: session?.roomCode || "NT8892",
+    roomCode: session?.roomCode || "",
     status: "LOBBY",
-    teams: mockTeams as any,
-    connectedCount: 6,
+    teams: emptyTeams as any,
+    connectedCount: 0,
     capacity: 8,
   };
 
@@ -104,23 +105,32 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     // Auto reconnect
     if (session && !lobby && !privateState) {
-      socket.emit(
-        CLIENT_EVENTS.RECONNECT,
-        { roomCode: session.roomCode, sessionToken: session.sessionToken },
-        (res: Ack<any>) => {
-          if (res.ok) {
-            setLobby(res.data.room);
-            if (res.data.privateState) {
-              setPrivateState(res.data.privateState);
-              if (res.data.privateState.role) setActiveRole(res.data.privateState.role);
+      const doReconnect = () => {
+        socket.emit(
+          CLIENT_EVENTS.RECONNECT,
+          { roomCode: session.roomCode, sessionToken: session.sessionToken },
+          (res: Ack<any>) => {
+            if (res.ok) {
+              setLobby(res.data.room);
+              if (res.data.privateState) {
+                setPrivateState(res.data.privateState);
+                if (res.data.privateState.role) setActiveRole(res.data.privateState.role);
+              }
+              if (res.data.publicState) setPublicState(res.data.publicState);
+            } else {
+              localStorage.removeItem(STORAGE_KEY);
+              setSession(null);
             }
-            if (res.data.publicState) setPublicState(res.data.publicState);
-          } else {
-            localStorage.removeItem(STORAGE_KEY);
-            setSession(null);
           }
-        }
-      );
+        );
+      };
+
+      if (!socket.connected) {
+        socket.connect();
+        socket.once("connect", doReconnect);
+      } else {
+        doReconnect();
+      }
     }
 
     return () => {
@@ -130,27 +140,30 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, [session]);
 
-  const handleJoin = (roomCode: string, teamNumber: number, displayName?: string) => {
+  const handleJoin = (
+    roomCode: string,
+    teamNumber: number,
+    displayName?: string,
+    onSuccess?: () => void
+  ) => {
     setLoading(true);
     setErrorMessage(null);
 
-    const fallbackSession: StoredSession = {
-      roomCode: roomCode.toUpperCase() || "NT8892",
-      sessionToken: "session-token-fallback",
-      teamNumber,
-      playerId: `player-${teamNumber}`,
-      teamId: `team-${teamNumber}`,
-    };
+    const cleanRoomCode = roomCode.trim().toUpperCase();
 
-    if (socket.connected) {
+    const doJoin = () => {
       socket.emit(
         CLIENT_EVENTS.JOIN_ROOM,
-        { roomCode, teamNumber, displayName },
+        {
+          roomCode: cleanRoomCode,
+          teamNumber,
+          displayName: displayName?.trim() || undefined,
+        },
         (res: Ack<any>) => {
           setLoading(false);
           if (res.ok) {
             const newSession: StoredSession = {
-              roomCode,
+              roomCode: cleanRoomCode,
               sessionToken: res.data.sessionToken,
               teamNumber,
               playerId: res.data.playerId,
@@ -159,17 +172,25 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
             setSession(newSession);
             setLobby(res.data.room);
+            onSuccess?.();
           } else {
-            // If server error or offline, still save session for UI demo
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(fallbackSession));
-            setSession(fallbackSession);
+            setErrorMessage(res.error?.message || "Không thể tham gia phòng. Vui lòng kiểm tra lại mã phòng.");
           }
         }
       );
+    };
+
+    if (!socket.connected) {
+      socket.connect();
+      socket.once("connect", doJoin);
+      setTimeout(() => {
+        if (!socket.connected) {
+          setLoading(false);
+          setErrorMessage("Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.");
+        }
+      }, 3500);
     } else {
-      setLoading(false);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(fallbackSession));
-      setSession(fallbackSession);
+      doJoin();
     }
   };
 
@@ -187,6 +208,30 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       socket.emit(CLIENT_EVENTS.READY, { ready: true }, (res: Ack<SetReadyResult>) => {
         if (res.ok) setLobby(res.data.room);
       });
+    }
+  };
+
+  const handleToggleReady = (explicitReady?: boolean) => {
+    const currentMyTeam = lobby?.teams.find((t) => t.teamNumber === session?.teamNumber);
+    const nextReady = explicitReady !== undefined ? explicitReady : !currentMyTeam?.ready;
+
+    if (socket.connected) {
+      setLoading(true);
+      socket.emit(CLIENT_EVENTS.READY, { ready: nextReady }, (res: Ack<SetReadyResult>) => {
+        setLoading(false);
+        if (res.ok) {
+          setLobby(res.data.room);
+        } else {
+          setErrorMessage(res.error.message);
+        }
+      });
+    } else {
+      if (lobby && session) {
+        const updatedTeams = lobby.teams.map((t) =>
+          t.teamNumber === session.teamNumber ? { ...t, ready: nextReady } : t
+        );
+        setLobby({ ...lobby, teams: updatedTeams });
+      }
     }
   };
 
@@ -210,7 +255,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const handleExecuteAbility = (targetTeamNumber: number) => {
     if (socket.connected && session) {
-      const targetTeam = (publicState?.teams || mockTeams).find((t) => t.teamNumber === targetTeamNumber);
+      const targetTeam = (publicState?.teams || lobby?.teams || emptyTeams).find((t: { teamNumber: number; id: string }) => t.teamNumber === targetTeamNumber);
       socket.emit(
         CLIENT_EVENTS.USE_ABILITY,
         {
@@ -226,13 +271,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const activeFaction: Faction = activeRole === "CORRUPTOR" ? "CORRUPTION" : "TRUST";
   const activeQuestion: PublicQuestion = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
   const questionDetail = SAMPLE_QUESTIONS.find(q => q.id === activeQuestion.id) || SAMPLE_QUESTIONS[0];
-  const teams = publicState?.teams || lobby?.teams || mockTeams;
+  const teams = publicState?.teams || lobby?.teams || emptyTeams;
 
   return (
     <PlayerContext.Provider
       value={{
         session,
-        lobby: lobby || mockLobby,
+        lobby,
         publicState,
         privateState,
         loading,
@@ -241,6 +286,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         handleJoin,
         handleLeaveRoom,
         handleConfirmReady,
+        handleToggleReady,
         handleSubmitAnswer,
         handleExecuteAbility,
         activeRole,
