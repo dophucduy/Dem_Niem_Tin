@@ -9,6 +9,7 @@ interface PlayerJoinViewProps {
   errorMessage?: string | null;
   onJoin: (roomCode: string, teamNumber: number, displayName?: string) => void;
   occupiedTeams?: number[]; // list of team numbers 1-8 already taken in this room
+  currentLobbyRoomCode?: string;
 }
 
 export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
@@ -18,6 +19,7 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
   errorMessage = null,
   onJoin,
   occupiedTeams = [],
+  currentLobbyRoomCode,
 }) => {
   const [roomCode, setRoomCode] = useState<string>(initialRoomCode.toUpperCase());
   const [selectedTeam, setSelectedTeam] = useState<number>(initialTeamNumber);
@@ -30,6 +32,11 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
     }
   }, [initialRoomCode]);
 
+  const cleanCode = roomCode.trim().toUpperCase();
+  // Only mark teams as occupied if user has typed a room code AND it matches the current loaded room
+  const isMatchingRoom = Boolean(cleanCode && currentLobbyRoomCode && cleanCode === currentLobbyRoomCode.trim().toUpperCase());
+  const effectiveOccupiedTeams = isMatchingRoom ? occupiedTeams : [];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
@@ -40,7 +47,7 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
       return;
     }
 
-    if (occupiedTeams.includes(selectedTeam)) {
+    if (effectiveOccupiedTeams.includes(selectedTeam)) {
       setValidationError(`Đội ${selectedTeam} đã có người chọn. Vui lòng chọn đội khác.`);
       return;
     }
@@ -135,7 +142,7 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
           </label>
           <div className="grid grid-cols-4 gap-2">
             {Array.from({ length: 8 }, (_, i) => i + 1).map((teamNum) => {
-              const isOccupied = occupiedTeams.includes(teamNum);
+              const isOccupied = effectiveOccupiedTeams.includes(teamNum);
               const isSelected = selectedTeam === teamNum;
 
               return (

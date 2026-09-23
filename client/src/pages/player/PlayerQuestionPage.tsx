@@ -14,6 +14,9 @@ export function PlayerQuestionPage() {
     handleSubmitAnswer(selectedIdx);
     const isCorrect = selectedIdx === questionDetail.correctOption;
     navigate(`/player/night/result?correct=${isCorrect}&answer=${selectedIdx}`);
+    handleSubmitAnswer(selectedIdx, (isCorrect: boolean) => {
+      navigate(`/player/night/result?correct=${isCorrect}&answer=${selectedIdx}`);
+    });
   };
 
   return (

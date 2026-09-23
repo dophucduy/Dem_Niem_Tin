@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Role } from "@dem-niem-tin/shared";
 import { usePlayerGame } from "../../context/PlayerContext";
 import { RoleRevealView } from "../../components/player/RoleRevealView";
+import { GameButton } from "../../components/common/GameButton";
+import { Moon } from "lucide-react";
 
 const VALID_ROLES: Role[] = [
   "INSPECTOR",
@@ -17,17 +19,33 @@ const VALID_ROLES: Role[] = [
 export function PlayerRolePage() {
   const navigate = useNavigate();
   const { role: urlRole } = useParams<{ role?: string }>();
-  const { activeRole, setActiveRole, session, handleConfirmReady } = usePlayerGame();
+  const { 
+    activeRole, 
+    setActiveRole, 
+    session, 
+    privateState, 
+    publicState, 
+    handleConfirmReady 
+  } = usePlayerGame();
+
+  const [hasConfirmed, setHasConfirmed] = useState(false);
+
+  // Auto-navigate to night question when server transitions to NIGHT phase
+  useEffect(() => {
+    if (publicState && publicState.phase === "NIGHT") {
+      navigate("/player/night/question");
+    }
+  }, [publicState?.phase, navigate]);
 
   const currentRole: Role = (urlRole && VALID_ROLES.includes(urlRole as Role))
     ? (urlRole as Role)
-    : activeRole;
+    : (privateState?.role || activeRole);
 
-  const currentFaction = currentRole === "CORRUPTOR" ? "CORRUPTION" : "TRUST";
+  const currentFaction = privateState?.faction || (currentRole === "CORRUPTOR" ? "CORRUPTION" : "TRUST");
 
   const onConfirm = () => {
+    setHasConfirmed(true);
     handleConfirmReady();
-    navigate("/player/night/question");
   };
 
   return (
@@ -57,10 +75,23 @@ export function PlayerRolePage() {
       <RoleRevealView
         role={currentRole}
         faction={currentFaction}
-        teamNumber={session?.teamNumber || 4}
+        teamNumber={session?.teamNumber || 1}
         onConfirmReady={onConfirm}
+        isReady={hasConfirmed}
       />
+
+      {/* Manual button to proceed to Night in test/demo mode */}
+      <div className="pt-1">
+        <GameButton
+          variant="outline"
+          size="sm"
+          fullWidth
+          icon={<Moon className="w-4 h-4 text-trust-300" />}
+          onClick={() => navigate("/player/night/question")}
+        >
+          TIẾN VÀO THỬ THÁCH TRI THỨC (P-04)
+        </GameButton>
+      </div>
     </div>
   );
 }
-

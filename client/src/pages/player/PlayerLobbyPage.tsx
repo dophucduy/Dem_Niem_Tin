@@ -16,12 +16,12 @@ export function PlayerLobbyPage() {
 
   // Auto-navigate to role reveal when host starts game
   useEffect(() => {
-    if (publicState && publicState.phase !== "LOBBY") {
+    if (publicState && (publicState.phase !== "LOBBY" || publicState.phaseStartedAt !== undefined)) {
       navigate("/player/role");
     } else if (privateState && privateState.role) {
       navigate("/player/role");
     }
-  }, [publicState?.phase, privateState?.role, navigate]);
+  }, [publicState?.phase, publicState?.phaseStartedAt, privateState?.role, navigate]);
 
   return (
     <div className="w-full max-w-md mx-auto space-y-4">

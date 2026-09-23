@@ -39,7 +39,7 @@ export interface PlayerContextType {
   handleLeaveRoom: () => void;
   handleConfirmReady: () => void;
   handleToggleReady: (ready?: boolean) => void;
-  handleSubmitAnswer: (selectedOption: number) => void;
+  handleSubmitAnswer: (selectedOption: number, onResult?: (correct: boolean) => void) => void;
   handleExecuteAbility: (targetTeamNumber: number) => void;
   activeRole: Role;
   setActiveRole: (role: Role) => void;
@@ -88,10 +88,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-    }
-
     const handleLobbyUpdated = (updatedLobby: LobbyState) => setLobby(updatedLobby);
     const handlePublicState = (state: PublicGameState) => setPublicState(state);
     const handlePrivateState = (state: PrivatePlayerState) => {
@@ -103,7 +99,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     socket.on(SERVER_EVENTS.PUBLIC_STATE_UPDATED, handlePublicState);
     socket.on(SERVER_EVENTS.PRIVATE_STATE_UPDATED, handlePrivateState);
 
-    // Auto reconnect
+    // Auto reconnect only if we have an active saved session
     if (session && !lobby && !privateState) {
       const doReconnect = () => {
         socket.emit(
@@ -120,6 +116,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             } else {
               localStorage.removeItem(STORAGE_KEY);
               setSession(null);
+              if (socket.connected) socket.disconnect();
             }
           }
         );
@@ -133,10 +130,18 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }
 
+    const handleBeforeUnload = () => {
+      if (socket.connected) {
+        socket.disconnect();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
     return () => {
       socket.off(SERVER_EVENTS.LOBBY_UPDATED, handleLobbyUpdated);
       socket.off(SERVER_EVENTS.PUBLIC_STATE_UPDATED, handlePublicState);
       socket.off(SERVER_EVENTS.PRIVATE_STATE_UPDATED, handlePrivateState);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [session]);
 
@@ -196,6 +201,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const handleLeaveRoom = () => {
     localStorage.removeItem(STORAGE_KEY);
+    if (socket.connected) {
+      socket.disconnect();
+    }
     setSession(null);
     setLobby(null);
     setPublicState(null);
@@ -235,9 +243,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const handleSubmitAnswer = (selectedOption: number) => {
+  const handleSubmitAnswer = (selectedOption: number, onResult?: (correct: boolean) => void) => {
     const currentQ = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
     if (socket.connected && session) {
+      setLoading(true);
       socket.emit(
         CLIENT_EVENTS.ANSWER_QUESTION,
         {
@@ -245,11 +254,18 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           selectedOption,
         },
         (res: Ack<AnswerQuestionResult>) => {
+          setLoading(false);
           if (res.ok) {
             setPrivateState(res.data.privateState);
+            onResult?.(res.data.correct);
+          } else {
+            setErrorMessage(res.error?.message || "Không thể gửi câu trả lời.");
           }
         }
       );
+    } else {
+      const isCorrect = selectedOption === questionDetail.correctOption;
+      onResult?.(isCorrect);
     }
   };
 
