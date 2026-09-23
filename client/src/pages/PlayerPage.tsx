@@ -213,21 +213,24 @@ export function PlayerPage() {
           selectedOption,
         },
         (res: Ack<AnswerQuestionResult>) => {
-          if (res.ok) {
+          if (!res.ok) {
+            setErrorMessage(res.error.message);
+          } else {
             setPrivateState(res.data.privateState);
-            setDemoScreen(res.data.correct ? "P05A_CORRECT" : "P05B_WRONG");
-          } else setErrorMessage(res.error.message);
+          }
         }
       );
     }
   };
 
   const handleExecuteAbility = (targetTeamNumber: number) => {
-    const targetTeamId = publicState?.teams.find((team) => team.teamNumber === targetTeamNumber)?.id;
-    if (socket.connected) {
+    if (socket.connected && session) {
+      const targetTeam = publicState?.teams.find((t) => t.teamNumber === targetTeamNumber);
       socket.emit(
         CLIENT_EVENTS.USE_ABILITY,
-        { targetTeamId },
+        {
+          targetTeamId: targetTeam?.id || `team-${targetTeamNumber}`,
+        },
         (res: Ack<PlayerActionResult>) => {
           if (!res.ok) setErrorMessage(res.error.message);
         }

@@ -1,39 +1,106 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { HostPage } from "./pages/HostPage";
-import { PlayerPage } from "./pages/PlayerPage";
+import { BrowserRouter, Route, Routes, Navigate, useParams } from "react-router-dom";
+
+// Real Player Pages & Layout
+import { PlayerLayout } from "./pages/player/PlayerLayout";
+import { PlayerJoinPage } from "./pages/player/PlayerJoinPage";
+import { PlayerLobbyPage } from "./pages/player/PlayerLobbyPage";
+import { PlayerRolePage } from "./pages/player/PlayerRolePage";
+import { PlayerQuestionPage } from "./pages/player/PlayerQuestionPage";
+import { PlayerResultPage } from "./pages/player/PlayerResultPage";
+import { PlayerAbilityPage } from "./pages/player/PlayerAbilityPage";
+import { PlayerObservePage } from "./pages/player/PlayerObservePage";
+import { PlayerPrivateResultPage } from "./pages/player/PlayerPrivateResultPage";
+
+// Real Host Pages & Layout
+import { HostLayout } from "./pages/host/HostLayout";
+import { HostLobbyPage } from "./pages/host/HostLobbyPage";
+import { HostRoleRevealPage } from "./pages/host/HostRoleRevealPage";
+import { HostNightPage } from "./pages/host/HostNightPage";
+
+// Navigation Directory
 import { TestNavigationPage } from "./pages/TestNavigationPage";
-import { TestScreenWrapper } from "./pages/TestScreenWrapper";
+
+function RoleRedirect() {
+  const { role } = useParams<{ role?: string }>();
+  return <Navigate to={role ? `/player/role/${role}` : "/player/role"} replace />;
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Đường dẫn tiêu chuẩn: Trang chủ (/) và (/player) là giao diện người chơi sinh viên */}
-        <Route path="/" element={<PlayerPage />} />
-        <Route path="/player" element={<PlayerPage />} />
+        {/* ======================================================== */}
+        {/* REAL PLAYER ROUTES (Mobile first >= 360px)               */}
+        {/* ======================================================== */}
+        <Route element={<PlayerLayout />}>
+          {/* Màn hình tham gia phòng (P-01) */}
+          <Route path="/" element={<PlayerJoinPage />} />
+          <Route path="/player" element={<PlayerJoinPage />} />
+          <Route path="/player/join" element={<PlayerJoinPage />} />
 
-        {/* Tuyến đường riêng biệt dành cho Giảng viên / Máy chiếu */}
-        <Route path="/host" element={<HostPage />} />
+          {/* Phòng chờ sinh viên (P-02) */}
+          <Route path="/player/lobby" element={<PlayerLobbyPage />} />
 
-        {/* === ĐIỀU HƯỚNG TRỰC TIẾP TRÊN THANH URL ĐỂ TEST TỪNG MÀN HÌNH === */}
-        {/* Bảng tổng hợp toàn bộ các màn hình */}
+          {/* Mở niêm phong vai trò bí mật (P-03) */}
+          <Route path="/player/role" element={<PlayerRolePage />} />
+          <Route path="/player/role/:role" element={<PlayerRolePage />} />
+
+          {/* Thử thách tri thức ban đêm (P-04) */}
+          <Route path="/player/night/question" element={<PlayerQuestionPage />} />
+
+          {/* Phân nhánh kết quả tri thức (P-05A ĐÚNG / P-05B SAI) */}
+          <Route path="/player/night/result" element={<PlayerResultPage />} />
+
+          {/* Thực thi quyền năng ban đêm (P-06) */}
+          <Route path="/player/night/ability" element={<PlayerAbilityPage />} />
+
+          {/* Quan sát đêm cho Công dân tạm thời (P-06-C) */}
+          <Route path="/player/night/observe" element={<PlayerObservePage />} />
+
+          {/* Kết quả mật riêng tư (P-07) */}
+          <Route path="/player/night/private-result" element={<PlayerPrivateResultPage />} />
+        </Route>
+
+        {/* ======================================================== */}
+        {/* REAL HOST ROUTES (Projector 1080p)                       */}
+        {/* ======================================================== */}
+        <Route path="/host" element={<HostLayout />}>
+          {/* Điều khiển phòng học & Sảnh chờ máy chiếu (H-01) */}
+          <Route index element={<HostLobbyPage />} />
+          <Route path="lobby" element={<HostLobbyPage />} />
+
+          {/* Sân khấu mở vai trò toàn lớp (H-02) */}
+          <Route path="role-reveal" element={<HostRoleRevealPage />} />
+
+          {/* Sân khấu thử thách đêm & Đồng hồ đếm ngược (H-03) */}
+          <Route path="night" element={<HostNightPage />} />
+        </Route>
+
+        {/* ======================================================== */}
+        {/* QUICK NAVIGATION DIRECTORY (/test)                       */}
+        {/* ======================================================== */}
         <Route path="/test" element={<TestNavigationPage />} />
 
-        {/* Test từng màn hình người chơi (Mobile) */}
-        <Route path="/test/p01" element={<TestScreenWrapper screenId="p01" />} />
-        <Route path="/test/p02" element={<TestScreenWrapper screenId="p02" />} />
-        <Route path="/test/p03" element={<TestScreenWrapper screenId="p03" />} />
-        <Route path="/test/p03/:role" element={<TestScreenWrapper screenId="p03" />} />
-        <Route path="/test/p04" element={<TestScreenWrapper screenId="p04" />} />
-        <Route path="/test/p05a" element={<TestScreenWrapper screenId="p05a" />} />
-        <Route path="/test/p05b" element={<TestScreenWrapper screenId="p05b" />} />
-        <Route path="/test/p06" element={<TestScreenWrapper screenId="p06" />} />
-        <Route path="/test/p06_citizen" element={<TestScreenWrapper screenId="p06_citizen" />} />
+        {/* ======================================================== */}
+        {/* BACKWARD-COMPATIBLE REDIRECTS FROM OLD TEST URLS         */}
+        {/* ======================================================== */}
+        <Route path="/test/p01" element={<Navigate to="/player" replace />} />
+        <Route path="/test/p02" element={<Navigate to="/player/lobby" replace />} />
+        <Route path="/test/p03" element={<Navigate to="/player/role" replace />} />
+        <Route path="/test/p03/:role" element={<RoleRedirect />} />
+        <Route path="/test/p04" element={<Navigate to="/player/night/question" replace />} />
+        <Route path="/test/p05a" element={<Navigate to="/player/night/result?correct=true" replace />} />
+        <Route path="/test/p05b" element={<Navigate to="/player/night/result?correct=false" replace />} />
+        <Route path="/test/p06" element={<Navigate to="/player/night/ability" replace />} />
+        <Route path="/test/p06_citizen" element={<Navigate to="/player/night/observe" replace />} />
+        <Route path="/test/p07" element={<Navigate to="/player/night/private-result?status=suspicious" replace />} />
+        <Route path="/test/p07_safe" element={<Navigate to="/player/night/private-result?status=safe" replace />} />
+        <Route path="/test/h01" element={<Navigate to="/host" replace />} />
+        <Route path="/test/h02" element={<Navigate to="/host/role-reveal" replace />} />
+        <Route path="/test/h03" element={<Navigate to="/host/night" replace />} />
 
-        {/* Test từng màn hình Giảng viên (Projector 1080p) */}
-        <Route path="/test/h01" element={<TestScreenWrapper screenId="h01" />} />
-        <Route path="/test/h02" element={<TestScreenWrapper screenId="h02" />} />
-        <Route path="/test/h03" element={<TestScreenWrapper screenId="h03" />} />
+        {/* Catch-all redirect to player home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
