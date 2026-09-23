@@ -28,7 +28,7 @@ export type TestScreenId =
   | "h03";
 
 interface TestScreenWrapperProps {
-  screenId: "p01" | "p02" | "p03" | "p04" | "p05a" | "p05b" | "h01" | "h02" | "h03";
+  screenId: TestScreenId;
 }
 
 export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }) => {

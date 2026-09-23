@@ -10,7 +10,9 @@ import {
   Role,
   Faction,
   Ack,
-  SetReadyResult 
+  SetReadyResult,
+  AnswerQuestionResult,
+  PlayerActionResult,
 } from "@dem-niem-tin/shared";
 import { socket } from "../services/socket";
 import { PlayerJoinView } from "../components/player/PlayerJoinView";
@@ -202,32 +204,31 @@ export function PlayerPage() {
   };
 
   const handleSubmitAnswer = (selectedOption: number) => {
-    const currentQ = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
-    if (socket.connected && session) {
+    const currentQ = publicState?.activeQuestion;
+    if (socket.connected && currentQ) {
       socket.emit(
         CLIENT_EVENTS.ANSWER_QUESTION,
         {
-          playerId: session.playerId,
           questionId: currentQ.id,
-          answer: currentQ.options[selectedOption],
+          selectedOption,
         },
-        (res: Ack<{ correct: boolean }>) => {
-          if (!res.ok) setErrorMessage(res.error.message);
+        (res: Ack<AnswerQuestionResult>) => {
+          if (res.ok) {
+            setPrivateState(res.data.privateState);
+            setDemoScreen(res.data.correct ? "P05A_CORRECT" : "P05B_WRONG");
+          } else setErrorMessage(res.error.message);
         }
       );
     }
   };
 
   const handleExecuteAbility = (targetTeamNumber: number) => {
-    if (socket.connected && session) {
+    const targetTeamId = publicState?.teams.find((team) => team.teamNumber === targetTeamNumber)?.id;
+    if (socket.connected) {
       socket.emit(
         CLIENT_EVENTS.USE_ABILITY,
-        {
-          gameId: publicState?.roomId || "game-1",
-          playerId: session.playerId,
-          targetId: `team-${targetTeamNumber}`,
-        },
-        (res: Ack<{ success: boolean }>) => {
+        { targetTeamId },
+        (res: Ack<PlayerActionResult>) => {
           if (!res.ok) setErrorMessage(res.error.message);
         }
       );
@@ -245,8 +246,10 @@ export function PlayerPage() {
   if (demoScreen === "AUTO") {
     if (!session) {
       currentScreen = "P01_JOIN";
-    } else if (publicState?.phase === "NIGHT") {
+    } else if (publicState?.phase === "NIGHT" && publicState.activeQuestion) {
       currentScreen = "P04_QUESTION";
+    } else if (publicState?.phase === "NIGHT" && privateState) {
+      currentScreen = privateState.effectiveState === "CITIZEN" ? "P06_CITIZEN" : "P06_ABILITY";
     } else if (privateState !== null) {
       currentScreen = "P03_ROLE";
     } else {
