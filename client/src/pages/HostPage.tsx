@@ -4,15 +4,18 @@ import {
   SERVER_EVENTS, 
   LobbyState, 
   PublicGameState,
+  PublicQuestion,
   Ack,
   CreateRoomResult
 } from "@dem-niem-tin/shared";
 import { socket } from "../services/socket";
 import { HostLobbyView } from "../components/host/HostLobbyView";
 import { HostRoleRevealStage } from "../components/host/HostRoleRevealStage";
+import { HostNightStage } from "../components/host/HostNightStage";
 import { AppHeader } from "../components/common/AppHeader";
 import { GameButton } from "../components/common/GameButton";
-import { Scale, Plus, AlertCircle } from "lucide-react";
+import { SAMPLE_QUESTIONS } from "../data/sampleQuestions";
+import { Scale, Plus, AlertCircle, Sparkles } from "lucide-react";
 
 const HOST_STORAGE_KEY = "dem_niem_tin_host_session";
 
@@ -20,6 +23,8 @@ interface StoredHostSession {
   roomCode: string;
   hostSessionToken: string;
 }
+
+type HostStageView = "LOBBY" | "ROLE_REVEAL" | "NIGHT" | "DAY" | "VOTING" | "FINAL";
 
 export function HostPage() {
   const [hostSession, setHostSession] = useState<StoredHostSession | null>(() => {
@@ -33,9 +38,13 @@ export function HostPage() {
 
   const [lobby, setLobby] = useState<LobbyState | null>(null);
   const [publicState, setPublicState] = useState<PublicGameState | null>(null);
-  const [currentView, setCurrentView] = useState<"LOBBY" | "ROLE_REVEAL" | "GAME">("LOBBY");
+  const [currentView, setCurrentView] = useState<HostStageView>("LOBBY");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Timer simulation state
+  const [paused, setPaused] = useState(false);
+  const [phaseEndsAt, setPhaseEndsAt] = useState<number>(() => Date.now() + 180 * 1000);
 
   useEffect(() => {
     if (!socket.connected) {
@@ -48,9 +57,10 @@ export function HostPage() {
 
     const handlePublicState = (state: PublicGameState) => {
       setPublicState(state);
-      if (state.phase !== "LOBBY") {
-        setCurrentView("GAME");
-      }
+      if (state.phase === "NIGHT") setCurrentView("NIGHT");
+      else if (state.phase === "DAY") setCurrentView("DAY");
+      else if (state.phase === "VOTING") setCurrentView("VOTING");
+      else if (state.phase === "FINAL") setCurrentView("FINAL");
     };
 
     socket.on(SERVER_EVENTS.LOBBY_UPDATED, handleLobbyUpdated);
@@ -98,8 +108,8 @@ export function HostPage() {
           id: `team-${i + 1}`,
           teamNumber: i + 1,
           displayName: i < 5 ? `Nhóm ${i + 1}` : undefined,
-          connected: true, // all 8 connected in preview to allow starting
-          ready: i < 4,
+          connected: true,
+          ready: i < 5,
           eliminated: false,
         }));
 
@@ -130,7 +140,12 @@ export function HostPage() {
   };
 
   const handleProceedToNight = () => {
-    alert("Chuyển sang Bước 4: Màn hình Thử thách Tri thức Ban đêm (P-04 & H-03)!");
+    setCurrentView("NIGHT");
+    setPhaseEndsAt(Date.now() + 180 * 1000);
+  };
+
+  const handleResolveNight = () => {
+    alert("Chuyển sang Bước 5: Mở khóa Năng lực (P-05A) & Công dân Tạm thời (P-05B)!");
   };
 
   const handleResetRoom = () => {
@@ -142,18 +157,34 @@ export function HostPage() {
     setErrorMessage(null);
   };
 
+  const activeQuestion: PublicQuestion = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
+  const teamsList = publicState?.teams || lobby?.teams || [];
+
   return (
     <div className="min-h-screen flex flex-col justify-between">
       {/* Header */}
       <AppHeader
         roleMode="HOST"
         roomCode={lobby?.roomCode}
-        phase={currentView === "ROLE_REVEAL" ? "NIGHT" : (publicState?.phase || "LOBBY")}
-        round={1}
+        phase={
+          currentView === "ROLE_REVEAL" || currentView === "NIGHT" 
+            ? "NIGHT" 
+            : currentView === "DAY" 
+            ? "DAY" 
+            : currentView === "VOTING" 
+            ? "VOTING" 
+            : currentView === "FINAL" 
+            ? "FINAL" 
+            : "LOBBY"
+        }
+        round={publicState?.round || 1}
+        trust={publicState?.trust || 100}
+        phaseEndsAt={currentView === "NIGHT" ? phaseEndsAt : undefined}
+        paused={paused}
       />
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-6 sm:p-8">
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-8">
         {!lobby ? (
           <div className="w-full max-w-lg mx-auto text-center space-y-6">
             <div className="glass-panel-elevated rounded-3xl p-8 sm:p-10 border border-trust-500/40 space-y-6 shadow-2xl">
@@ -198,8 +229,21 @@ export function HostPage() {
           </div>
         ) : currentView === "ROLE_REVEAL" ? (
           <HostRoleRevealStage
-            teams={lobby.teams}
+            teams={teamsList}
             onProceedToNight={handleProceedToNight}
+            loading={loading}
+          />
+        ) : currentView === "NIGHT" ? (
+          <HostNightStage
+            round={publicState?.round || 1}
+            question={activeQuestion}
+            teams={teamsList}
+            trust={publicState?.trust || 100}
+            phaseEndsAt={phaseEndsAt}
+            paused={paused}
+            onPauseToggle={() => setPaused(!paused)}
+            onSkipTimer={() => setPhaseEndsAt(Date.now() + 5000)}
+            onResolveNight={handleResolveNight}
             loading={loading}
           />
         ) : (
@@ -212,8 +256,31 @@ export function HostPage() {
         )}
       </main>
 
+      {/* Development UI Stage Switcher for Host */}
+      {lobby && (
+        <div className="bg-night-950/95 border-t border-night-700/80 p-2 px-6 flex items-center justify-between text-xs text-slate-400">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-trust-400" />
+            <span className="font-semibold text-slate-300">Host Stage Preview:</span>
+            <select
+              value={currentView}
+              onChange={(e) => setCurrentView(e.target.value as HostStageView)}
+              className="bg-night-800 border border-night-600 rounded px-2.5 py-1 text-white font-bold text-xs outline-none"
+            >
+              <option value="LOBBY">H-01: Phòng chờ (Lobby)</option>
+              <option value="ROLE_REVEAL">H-02: Phân phát vai trò (Role Reveal)</option>
+              <option value="NIGHT">H-03: Thử thách tri thức ban đêm (Night Question)</option>
+            </select>
+          </div>
+
+          <div className="text-[11px] text-slate-500 font-mono">
+            Độ phân giải hiển thị chuẩn máy chiếu
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
-      <footer className="py-3 text-center text-xs text-slate-500">
+      <footer className="py-2 text-center text-xs text-slate-500">
         Đêm Niềm Tin — Phiên bản phòng học • Masterplan 1.0
       </footer>
     </div>
