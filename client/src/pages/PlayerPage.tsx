@@ -12,7 +12,7 @@ import {
   Ack,
   SetReadyResult,
   AnswerQuestionResult,
-  PlayerActionResult 
+  PlayerActionResult,
 } from "@dem-niem-tin/shared";
 import { socket } from "../services/socket";
 import { PlayerJoinView } from "../components/player/PlayerJoinView";
@@ -204,8 +204,8 @@ export function PlayerPage() {
   };
 
   const handleSubmitAnswer = (selectedOption: number) => {
-    const currentQ = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
-    if (socket.connected && session) {
+    const currentQ = publicState?.activeQuestion;
+    if (socket.connected && currentQ) {
       socket.emit(
         CLIENT_EVENTS.ANSWER_QUESTION,
         {
@@ -249,8 +249,10 @@ export function PlayerPage() {
   if (demoScreen === "AUTO") {
     if (!session) {
       currentScreen = "P01_JOIN";
-    } else if (publicState?.phase === "NIGHT") {
+    } else if (publicState?.phase === "NIGHT" && publicState.activeQuestion) {
       currentScreen = "P04_QUESTION";
+    } else if (publicState?.phase === "NIGHT" && privateState) {
+      currentScreen = privateState.effectiveState === "CITIZEN" ? "P06_CITIZEN" : "P06_ABILITY";
     } else if (privateState !== null) {
       currentScreen = "P03_ROLE";
     } else {

@@ -28,15 +28,17 @@ export async function assignRoles(gameId: string): Promise<void> {
     return {
       updateOne: {
         filter: { _id: player._id },
-        update: { 
-          $set: { 
+        update: [
+          {
+            $set: {
             role, 
             faction, 
-            effectiveState: "SPECIAL", 
+            effectiveState: "SPECIAL",
             abilityUnlocked: false,
             privateResults: []
-          } 
-        },
+            },
+          },
+        ],
       },
     };
   });

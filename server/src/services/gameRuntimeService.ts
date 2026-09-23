@@ -4,6 +4,9 @@ import {
   type AnswerQuestionPayload,
   type AnswerQuestionResult,
   type PrivatePlayerState,
+  type PublicQuestion,
+  type Clue,
+  type PublicGameEvent,
   type PublicGameState,
   type SubmitVotePayload,
   type UseAbilityPayload,
@@ -310,7 +313,7 @@ export class GameRuntimeService {
       paused: game.paused,
       phaseStartedAt: game.phaseStartedAt?.getTime(),
       phaseEndsAt: game.phaseEndsAt?.getTime(),
-      pausedRemainingMs: game.pausedRemainingMs,
+      pausedRemainingMs: game.pausedRemainingMs ?? undefined,
       revision: game.revision,
     });
     const runtime = this.createRuntime(roomId, engine);
@@ -363,9 +366,33 @@ export class GameRuntimeService {
       phaseEndsAt: state.phaseEndsAt,
       paused: state.paused,
       teams: lobby.teams,
-      activeQuestion: state.phase === "NIGHT_KNOWLEDGE" ? game?.activeQuestion : undefined,
-      publicClues: game?.publicClues ?? [],
-      publicEvents: game?.publicEvents ?? [],
+      activeQuestion:
+        state.phase === "NIGHT_KNOWLEDGE" && game?.activeQuestion
+          ? ({
+              id: game.activeQuestion.id,
+              category: game.activeQuestion.category,
+              difficulty: game.activeQuestion.difficulty,
+              text: game.activeQuestion.text,
+              options: [...game.activeQuestion.options],
+            } satisfies PublicQuestion)
+          : undefined,
+      publicClues: (game?.publicClues ?? []).map(
+        (clue: { id: string; title: string; description: string; visibility: Clue["visibility"]; revealedAt?: number | null }): Clue => ({
+          id: clue.id,
+          title: clue.title,
+          description: clue.description,
+          visibility: clue.visibility,
+          revealedAt: clue.revealedAt ?? undefined,
+        }),
+      ),
+      publicEvents: (game?.publicEvents ?? []).map(
+        (event: PublicGameEvent): PublicGameEvent => ({
+          id: event.id,
+          type: event.type,
+          message: event.message,
+          timestamp: event.timestamp,
+        }),
+      ),
     };
   }
 }

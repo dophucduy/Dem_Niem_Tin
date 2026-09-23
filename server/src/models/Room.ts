@@ -1,4 +1,4 @@
-import mongoose, { model, Schema, type InferSchemaType } from "mongoose";
+import mongoose, { model, Schema, type InferSchemaType, type Model } from "mongoose";
 
 const roomSchema = new Schema(
   {
@@ -19,4 +19,5 @@ roomSchema.index({ status: 1, updatedAt: -1 });
 
 export type RoomDocument = InferSchemaType<typeof roomSchema>;
 
-export const RoomModel = mongoose.models.Room ?? model("Room", roomSchema);
+export const RoomModel =
+  (mongoose.models.Room as Model<RoomDocument> | undefined) ?? model<RoomDocument>("Room", roomSchema);

@@ -1,4 +1,4 @@
-import mongoose, { model, Schema, type InferSchemaType } from "mongoose";
+import mongoose, { model, Schema, type InferSchemaType, type Model } from "mongoose";
 
 const voteSchema = new Schema(
   {
@@ -14,4 +14,5 @@ voteSchema.index({ gameId: 1, round: 1, voterId: 1 }, { unique: true });
 
 export type VoteDocument = InferSchemaType<typeof voteSchema>;
 
-export const VoteModel = mongoose.models.Vote ?? model("Vote", voteSchema);
+export const VoteModel =
+  (mongoose.models.Vote as Model<VoteDocument> | undefined) ?? model<VoteDocument>("Vote", voteSchema);

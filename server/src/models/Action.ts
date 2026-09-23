@@ -1,4 +1,4 @@
-import mongoose, { model, Schema, type InferSchemaType } from "mongoose";
+import mongoose, { model, Schema, type InferSchemaType, type Model } from "mongoose";
 
 const actionSchema = new Schema(
   {
@@ -13,4 +13,5 @@ const actionSchema = new Schema(
 actionSchema.index({ gameId: 1, round: 1, playerId: 1 }, { unique: true });
 
 export type ActionDocument = InferSchemaType<typeof actionSchema>;
-export const ActionModel = mongoose.models.Action ?? model("Action", actionSchema);
+export const ActionModel =
+  (mongoose.models.Action as Model<ActionDocument> | undefined) ?? model<ActionDocument>("Action", actionSchema);
