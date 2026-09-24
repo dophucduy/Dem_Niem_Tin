@@ -65,15 +65,12 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
         <h1 className="text-3xl sm:text-5xl font-black text-white tracking-wider mb-2">
           ĐÊM NIỀM TIN
         </h1>
-        <p className="text-slate-400 text-sm sm:text-base max-w-xl mx-auto mb-6">
-          Các đội sử dụng điện thoại quét mã QR hoặc truy cập đường dẫn để tham gia vào đúng đội của mình
-        </p>
 
         {/* Room Code Display */}
         <div className="inline-flex flex-col sm:flex-row items-center gap-4 p-4 sm:px-8 sm:py-5 rounded-2xl bg-night-950/80 border border-trust-500/50 shadow-glow">
           <div className="text-left">
             <div className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">
-              Mã phòng (Room Code)
+              Mã phòng
             </div>
             <div className="text-4xl sm:text-5xl font-mono font-black tracking-widest text-trust-400">
               {lobby.roomCode}
@@ -115,7 +112,7 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
         <div className="mt-6 flex items-center justify-center gap-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-300">
             <Users className="w-4 h-4 text-trust-400" />
-            Tiến độ chuẩn bị:
+            Đã tham gia:
             <span className="font-mono font-bold text-base text-white px-2 py-0.5 rounded bg-night-900 border border-night-700">
               {connectedCount} / 8 ĐỘI
             </span>
@@ -140,9 +137,6 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
             <Shield className="w-4 h-4 text-trust-400" />
             Trạng thái kết nối 8 Đội chơi
           </h2>
-          <span className="text-xs text-slate-500 font-mono">
-            Mỗi đội đại diện cho một vai trò bí mật
-          </span>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -168,7 +162,7 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
                 {/* Header */}
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
-                    Slot {teamNum}
+                    Vị trí {teamNum}
                   </span>
                   <div className="flex items-center gap-1.5">
                     {isConnected ? (
@@ -180,7 +174,7 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
                       ) : (
                         <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400">
                           <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                          ONLINE
+                          ĐÃ KẾT NỐI
                         </span>
                       )
                     ) : (
@@ -216,13 +210,8 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
         )}
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-slate-400">
-            <span className="font-bold text-slate-300">Quy tắc bắt đầu:</span> Yêu cầu đủ 8 đội kết nối và bấm sẵn sàng trên điện thoại.
-            {!isReadyToStart && (
-              <span className="text-amber-400 block sm:inline sm:ml-2">
-                (Thiếu {8 - connectedCount} đội kết nối, {8 - readyCount} đội sẵn sàng)
-              </span>
-            )}
+          <div className="text-xs text-amber-400">
+            {!isReadyToStart && `Còn ${8 - readyCount} đội chưa sẵn sàng`}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -234,7 +223,7 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
                   className="px-3 py-2 rounded-xl bg-night-800 hover:bg-night-700 text-trust-300 text-xs font-bold border border-trust-600/40 transition-all cursor-pointer"
                   title="Giả lập các đội 2-8 và chừa Đội 1 cho bạn tham gia"
                 >
-                  ⚡ Giả lập 7 đội (chừa Đội 1)
+                  ⚡ Giả lập 7 đội
                 </button>
                 <button
                   type="button"

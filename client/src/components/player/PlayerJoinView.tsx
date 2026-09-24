@@ -43,7 +43,7 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
 
     const cleanCode = roomCode.trim().toUpperCase();
     if (!cleanCode) {
-      setValidationError("Vui lòng nhập Mã phòng do Giảng viên / Host cung cấp.");
+      setValidationError("Vui lòng nhập mã phòng do giảng viên cung cấp.");
       return;
     }
 
@@ -68,9 +68,6 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
         <h1 className="text-2xl sm:text-3xl font-black tracking-wide text-white">
           ĐÊM NIỀM TIN
         </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Nhập mã phòng và chọn đội đại diện để tham gia lớp học
-        </p>
       </div>
 
       {/* Main Join Card */}
@@ -90,7 +87,7 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-              Mã phòng (Room Code) <span className="text-trust-400">*</span>
+              Mã phòng <span className="text-trust-400">*</span>
             </label>
             {roomCode && (
               <button
@@ -138,7 +135,7 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
         {/* Team Selection Grid (8 Teams) */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
-            Chọn Đội đại diện (1 trong 8 Đội) <span className="text-trust-400">*</span>
+            Chọn đội <span className="text-trust-400">*</span>
           </label>
           <div className="grid grid-cols-4 gap-2">
             {Array.from({ length: 8 }, (_, i) => i + 1).map((teamNum) => {
@@ -212,10 +209,6 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
           VÀO PHÒNG CHƠI
         </GameButton>
 
-        <div className="text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5 pt-1">
-          <Shield className="w-3.5 h-3.5 text-trust-500/60" />
-          Phiên chơi bảo mật, tự động khôi phục khi tải lại trang
-        </div>
       </form>
     </div>
   );

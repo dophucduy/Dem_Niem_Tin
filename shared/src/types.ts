@@ -81,6 +81,8 @@ export type LobbyState = {
 export type PublicGameState = {
   roomId: string;
   roomCode: string;
+  /** Exact server-authoritative phase used to keep every client in sync. */
+  gamePhase: GamePhase;
   phase: PublicPhase;
   round: number;
   trust: number;

@@ -217,7 +217,7 @@ export const PrivateResultView: React.FC<PrivateResultViewProps> = ({
           onClick={onAcknowledge}
           icon={<ArrowRight className="w-5 h-5" />}
         >
-          TIẾP TỤC ĐẾN BÁO CÁO BAN NGÀY (P-08)
+          TIẾP TỤC
         </GameButton>
       </div>
     </div>

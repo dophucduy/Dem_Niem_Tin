@@ -134,7 +134,7 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
                 fullWidth
                 onClick={onProceedToResult}
               >
-                TIẾN ĐẾN KẾT QUẢ RIÊNG TƯ (P-07)
+                XEM KẾT QUẢ
               </GameButton>
             </div>
           )}
@@ -191,7 +191,7 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
                 fullWidth
                 onClick={onProceedToResult}
               >
-                TIẾN ĐẾN KẾT QUẢ RIÊNG TƯ (P-07)
+                XEM KẾT QUẢ
               </GameButton>
             </div>
           )}

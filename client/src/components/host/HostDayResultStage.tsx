@@ -168,7 +168,7 @@ export const HostDayResultStage: React.FC<HostDayResultStageProps> = ({
                     ĐỘI {t.teamNumber}
                   </div>
                   <div className="text-[9px] text-righteous-400 font-semibold mt-0.5">
-                    {t.connected ? "ONLINE" : "OFFLINE"}
+                    {t.connected ? "ĐÃ KẾT NỐI" : "MẤT KẾT NỐI"}
                   </div>
                 </div>
               ))}

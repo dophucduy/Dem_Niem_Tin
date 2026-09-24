@@ -256,7 +256,7 @@ export const HostVotingStage: React.FC<HostVotingStageProps> = ({
         <div className="flex items-center gap-3 text-xs text-slate-400">
           <HelpCircle className="w-5 h-5 text-trust-400 shrink-0" />
           <span>
-            Khi đủ 100% số phiếu hoặc giảng viên bấm nút, hệ thống sẽ tiến hành <strong>Kiểm phiếu Công khai (H-07)</strong>.
+            Đủ phiếu thì giảng viên tiến hành kiểm phiếu.
           </span>
         </div>
 
@@ -278,7 +278,7 @@ export const HostVotingStage: React.FC<HostVotingStageProps> = ({
             icon={<SkipForward className="w-4 h-4" />}
             disabled={loading}
           >
-            ĐÓNG HÒM PHIẾU &amp; KIỂM PHIẾU (H-07)
+            KIỂM PHIẾU
           </GameButton>
         </div>
       </div>

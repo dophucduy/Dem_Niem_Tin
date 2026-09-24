@@ -96,7 +96,7 @@ export const HostNightStage: React.FC<HostNightStageProps> = ({
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            1. CÂU HỎI TRI THỨC (P-04)
+            CÂU HỎI TRI THỨC
           </button>
           <button
             type="button"
@@ -108,7 +108,7 @@ export const HostNightStage: React.FC<HostNightStageProps> = ({
             }`}
           >
             <Zap className="w-4 h-4 text-trust-400" />
-            2. THỰC THI QUYỀN NĂNG (P-06)
+            THỰC THI QUYỀN NĂNG
             {isAllAnswered && (
               <span className="w-2 h-2 rounded-full bg-righteous-400 animate-pulse" />
             )}

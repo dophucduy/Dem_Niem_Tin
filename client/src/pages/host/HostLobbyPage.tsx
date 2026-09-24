@@ -1,12 +1,10 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { useHostGame } from "../../context/HostContext";
 import { HostLobbyView } from "../../components/host/HostLobbyView";
 import { GameButton } from "../../components/common/GameButton";
 import { Scale, Plus, AlertCircle } from "lucide-react";
 
 export function HostLobbyPage() {
-  const navigate = useNavigate();
   const { 
     lobby, 
     hostSession, 
@@ -20,9 +18,7 @@ export function HostLobbyPage() {
   } = useHostGame();
 
   const onStart = () => {
-    handleStartGame(() => {
-      navigate("/host/role-reveal");
-    });
+    handleStartGame();
   };
 
   if (!hostSession || !lobby) {
@@ -34,11 +30,11 @@ export function HostLobbyPage() {
           </div>
           <div>
             <div className="text-xs uppercase tracking-[0.25em] text-trust-400 font-bold mb-1">
-              Màn hình Giảng viên / Ban tổ chức
+              Dành cho giảng viên
             </div>
             <h1 className="text-3xl font-black text-white tracking-wide">ĐIỀU KHIỂN PHÒNG HỌC</h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-2">
-              Tạo phòng học mới để lấy mã phòng và mã QR cho 8 đội sinh viên kết nối.
+              Tạo phòng cho 8 đội tham gia.
             </p>
           </div>
           {errorMessage && (
@@ -58,7 +54,7 @@ export function HostLobbyPage() {
             KHỞI TẠO PHÒNG MỚI
           </GameButton>
           <div className="text-xs text-slate-500 font-mono">
-            Tối ưu hiển thị cho máy chiếu 1280×720 & 1920×1080
+            Tối ưu cho màn hình trình chiếu
           </div>
         </div>
       </div>

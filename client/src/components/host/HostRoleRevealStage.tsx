@@ -111,10 +111,10 @@ export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
         <div className="flex items-center justify-between mb-4 px-2">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
             <EyeOff className="w-4 h-4 text-trust-400" />
-            Trạng thái xác nhận của các đội (Vai trò được mã hóa tuyệt mật)
+            Trạng thái xác nhận
           </h2>
           <span className="text-xs text-slate-500 font-mono">
-            Host không thấy vai trò để bảo đảm tính công bằng
+            Vai trò của các đội được giữ bí mật
           </span>
         </div>
 
@@ -162,7 +162,7 @@ export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
       <div className="glass-panel rounded-2xl p-6 border border-night-700 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="text-xs text-slate-400 flex items-center gap-2">
           <Scale className="w-4 h-4 text-trust-400" />
-          Khi toàn bộ các đội đã mở hồ sơ và sẵn sàng, Giảng viên bấm để bắt đầu Đêm thứ nhất.
+          Khi đủ 8 đội sẵn sàng, giảng viên bắt đầu đêm đầu tiên.
         </div>
 
         <GameButton

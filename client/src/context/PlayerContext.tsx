@@ -243,12 +243,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       });
     } else {
-      if (lobby && session) {
-        const updatedTeams = lobby.teams.map((t) =>
-          t.teamNumber === session.teamNumber ? { ...t, ready: nextReady } : t
-        );
-        setLobby({ ...lobby, teams: updatedTeams });
-      }
+      setErrorMessage("Mất kết nối máy chủ. Trạng thái chưa được thay đổi.");
     }
   };
 
@@ -273,8 +268,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       );
     } else {
-      const isCorrect = selectedOption === questionDetail.correctOption;
-      onResult?.(isCorrect);
+      setErrorMessage("Mất kết nối máy chủ. Câu trả lời chưa được gửi.");
     }
   };
 

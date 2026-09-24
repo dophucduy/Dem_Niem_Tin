@@ -14,16 +14,8 @@ export function HostRoleRevealPage() {
     }
   }, [hostSession, navigate]);
 
-  // When game advances to NIGHT phase on server, navigate to /host/night automatically
-  useEffect(() => {
-    if (publicState && publicState.phase === "NIGHT") {
-      navigate("/host/night");
-    }
-  }, [publicState?.phase, navigate]);
-
   const onProceed = () => {
     runGameCommand("skip");
-    navigate("/host/night");
   };
 
   return (

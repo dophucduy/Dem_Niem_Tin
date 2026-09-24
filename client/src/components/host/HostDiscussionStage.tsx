@@ -293,7 +293,7 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
         <div className="flex items-center gap-3 text-xs text-slate-400">
           <HelpCircle className="w-5 h-5 text-trust-400 shrink-0" />
           <span>
-            Hết 90s tranh luận, hệ thống sẽ tự động chuyển sang <strong>Phiên Bỏ phiếu Tín nhiệm (H-06)</strong>.
+            Hết thời gian, hệ thống chuyển sang bỏ phiếu.
           </span>
         </div>
 
@@ -315,7 +315,7 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
             icon={<SkipForward className="w-4 h-4" />}
             disabled={loading}
           >
-            BƯỚC VÀO PHIÊN BỎ PHIẾU (H-06)
+            BẮT ĐẦU BỎ PHIẾU
           </GameButton>
         </div>
       </div>

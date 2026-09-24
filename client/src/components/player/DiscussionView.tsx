@@ -362,7 +362,7 @@ export const DiscussionView: React.FC<DiscussionViewProps> = ({
             onClick={onReadyToVote}
             icon={<CheckCircle2 className="w-5 h-5" />}
           >
-            SẴN SÀNG BỎ PHIẾU TÍN NHIỆM (P-10)
+            SẴN SÀNG BỎ PHIẾU
           </GameButton>
         )}
       </div>

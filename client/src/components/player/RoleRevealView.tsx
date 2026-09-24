@@ -117,9 +117,6 @@ export const RoleRevealView: React.FC<RoleRevealViewProps> = ({
             <h2 className="text-2xl font-black text-white tracking-wide">
               ĐỘI SỐ {teamNumber}
             </h2>
-            <p className="text-xs text-slate-400 px-4">
-              Hồ sơ chứa đựng danh tính và quyền năng của đội bạn trong suốt trận đấu
-            </p>
           </div>
 
           {/* Interactive Tap CTA */}
@@ -129,9 +126,6 @@ export const RoleRevealView: React.FC<RoleRevealViewProps> = ({
           </div>
         </div>
 
-        <p className="text-[11px] text-slate-500">
-          Chỉ thành viên trong Đội {teamNumber} được phép quan sát màn hình này
-        </p>
       </div>
     );
   }
@@ -206,9 +200,6 @@ export const RoleRevealView: React.FC<RoleRevealViewProps> = ({
           <h1 className="text-3xl sm:text-4xl font-black text-white tracking-wide">
             {roleInfo.name}
           </h1>
-          <p className="text-xs font-semibold text-slate-300">
-            {roleInfo.subtitle}
-          </p>
         </div>
 
         {/* Ability Section */}
@@ -223,9 +214,7 @@ export const RoleRevealView: React.FC<RoleRevealViewProps> = ({
             </span>
           </div>
 
-          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
-            {roleInfo.abilityDetail}
-          </p>
+          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">{roleInfo.abilityShortDesc}</p>
         </div>
 
         {/* CORE EDUCATIONAL PRINCIPLE BANNER */}
@@ -235,19 +224,9 @@ export const RoleRevealView: React.FC<RoleRevealViewProps> = ({
             <div className="font-bold text-amber-300 uppercase tracking-wider">
               Quy tắc Mở khóa Năng lực
             </div>
-            <p className="text-slate-300 leading-normal text-[11px]">
-              Muốn sử dụng năng lực trên, đội bạn bắt buộc phải <strong className="text-white">trả lời ĐÚNG</strong> câu hỏi tri thức ở đầu mỗi đêm. Nếu trả lời sai, bạn sẽ tạm thời trở thành <strong className="text-amber-300">CÔNG DÂN</strong> (bị khóa kỹ năng trong đêm đó)!
-            </p>
+            <p className="text-slate-300 leading-normal text-[11px]">Trả lời đúng để mở năng lực trong đêm.</p>
           </div>
         </div>
-
-        {/* Quotation / Flavor */}
-        {roleInfo.flavorQuote && (
-          <div className="p-3 rounded-xl bg-night-900/50 border border-night-800 text-slate-400 italic text-[11px] leading-relaxed mb-6">
-            <BookOpen className="w-3.5 h-3.5 text-trust-500/70 inline mr-1.5 -mt-0.5" />
-            {roleInfo.flavorQuote}
-          </div>
-        )}
 
         {/* Confirm Ready Action */}
         <div>

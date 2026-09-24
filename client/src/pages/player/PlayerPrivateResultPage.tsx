@@ -60,31 +60,6 @@ export function PlayerPrivateResultPage() {
 
   return (
     <div className="w-full max-w-md mx-auto space-y-4">
-      {/* Switch between suspicious and safe for live demo */}
-      <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-night-900/90 border border-night-700/80 text-xs">
-        <span className="text-slate-400 font-medium">Báo cáo mật:</span>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => navigate(`/player/night/private-result?status=suspicious&target=${targetParam}`)}
-            className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors ${
-              isSuspicious ? "bg-corruption-500/20 text-corruption-400 border border-corruption-500/40" : "text-slate-400 hover:text-white"
-            }`}
-          >
-            ĐÁNG NGỜ (P-07)
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(`/player/night/private-result?status=safe&target=${targetParam}`)}
-            className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors ${
-              !isSuspicious ? "bg-trust-500/20 text-trust-400 border border-trust-500/40" : "text-slate-400 hover:text-white"
-            }`}
-          >
-            AN TOÀN (P-07-S)
-          </button>
-        </div>
-      </div>
-
       <PrivateResultView
         role={activeRole}
         myTeamNumber={myTeam}

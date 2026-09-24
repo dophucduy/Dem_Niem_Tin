@@ -360,6 +360,7 @@ export class GameRuntimeService {
     const publicState: PublicGameState = {
       roomId,
       roomCode: lobby.roomCode,
+      gamePhase: state.phase,
       phase: engine.publicPhase,
       round: state.round,
       trust: state.trust,

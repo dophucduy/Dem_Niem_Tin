@@ -46,7 +46,7 @@ export const HostFinalStage: React.FC<HostFinalStageProps> = ({
             <div className="flex items-center gap-2">
               <span className={`w-2.5 h-2.5 rounded-full ${isVictory ? "bg-righteous-400" : "bg-amber-400"} animate-ping`} />
               <span className="text-xs font-mono font-bold tracking-widest uppercase text-slate-300">
-                CHUYÊN ĐỀ HOÀN TẤT &bull; TỔNG KẾT CHUNG CUỘC (H-08)
+                TỔNG KẾT
               </span>
             </div>
             <h1 className="text-2xl lg:text-3xl font-black text-white tracking-wide">

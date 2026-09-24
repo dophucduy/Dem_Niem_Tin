@@ -53,9 +53,6 @@ export const NightQuestionView: React.FC<NightQuestionViewProps> = ({
             <div className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
               Thử thách Đêm 0{roundNumber}
             </div>
-            <div className="text-xs font-bold text-white">
-              Mục tiêu: Mở khóa <span className="text-trust-400">{abilityName}</span>
-            </div>
           </div>
         </div>
 
@@ -134,9 +131,7 @@ export const NightQuestionView: React.FC<NightQuestionViewProps> = ({
               <CheckCircle2 className="w-5 h-5" />
               ĐÃ GỬI ĐÁP ÁN THÀNH CÔNG
             </div>
-            <p className="text-xs text-slate-400">
-              Đang chờ toàn bộ các đội hoàn thành để máy chủ công bố kết quả thẩm định...
-            </p>
+            <p className="text-xs text-slate-400">Chờ các đội còn lại</p>
           </div>
         ) : (
           <GameButton
@@ -152,11 +147,6 @@ export const NightQuestionView: React.FC<NightQuestionViewProps> = ({
           </GameButton>
         )}
 
-        {/* Bottom Rule Reminder */}
-        <div className="pt-1 text-center text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-trust-400" />
-          Mỗi đội chỉ được gửi đáp án 1 lần duy nhất trong đêm
-        </div>
       </form>
     </div>
   );

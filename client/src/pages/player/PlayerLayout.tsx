@@ -1,11 +1,57 @@
-import React from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { PlayerProvider, usePlayerGame } from "../../context/PlayerContext";
 import { AppHeader } from "../../components/common/AppHeader";
 
 function PlayerLayoutContent() {
-  const { session, publicState } = usePlayerGame();
+  const { session, publicState, privateState } = usePlayerGame();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!session || !publicState) return;
+
+    let target: string | null = null;
+    switch (publicState.gamePhase) {
+      case "LOBBY":
+        target = "/player/lobby";
+        break;
+      case "ROLE_REVEAL":
+        target = "/player/role";
+        break;
+      case "NIGHT_KNOWLEDGE":
+        // The answer screen is part of this phase; wait there until the host advances.
+        target = location.pathname === "/player/night/result" ? null : "/player/night/question";
+        break;
+      case "NIGHT_ABILITY":
+        target = privateState?.abilityUnlocked ? "/player/night/ability" : "/player/night/observe";
+        break;
+      case "NIGHT_RESOLUTION":
+        target = "/player/night/private-result";
+        break;
+      case "DAY_RESULT":
+        target = "/player/day/result";
+        break;
+      case "DISCUSSION":
+        target = "/player/day/discussion";
+        break;
+      case "VOTING":
+        target = "/player/vote";
+        break;
+      case "VOTE_RESULT":
+        target = "/player/vote/result";
+        break;
+      case "TRUST_UPDATE":
+      case "NEXT_ROUND":
+        target = "/player/day/result";
+        break;
+      case "FINAL":
+        target = "/player/final";
+        break;
+    }
+
+    if (target && location.pathname !== target) navigate(target, { replace: true });
+  }, [session, publicState?.gamePhase, privateState?.abilityUnlocked, location.pathname, navigate]);
 
   const isNight = location.pathname.includes("/night");
 
@@ -16,7 +62,7 @@ function PlayerLayoutContent() {
         roleMode="PLAYER"
         roomCode={session?.roomCode || "NT8892"}
         teamDisplayName={`Đội ${session?.teamNumber || 4}`}
-        phase={isNight ? "NIGHT" : (publicState?.phase || "LOBBY")}
+        phase={publicState?.phase || (isNight ? "NIGHT" : "LOBBY")}
         round={publicState?.round || 1}
         trust={publicState?.trust || 100}
       />
@@ -26,10 +72,6 @@ function PlayerLayoutContent() {
         <Outlet />
       </main>
 
-      {/* Clean Footer */}
-      <footer className="py-2.5 text-center text-xs text-slate-500">
-        Đêm Niềm Tin • Giao diện đội chơi di động (&ge; 360px)
-      </footer>
     </div>
   );
 }

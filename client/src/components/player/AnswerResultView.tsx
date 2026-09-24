@@ -23,6 +23,7 @@ interface AnswerResultViewProps {
   correctOptionText?: string;
   explanation: string;
   onProceed: () => void;
+  waitingForHost?: boolean;
 }
 
 export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
@@ -33,6 +34,7 @@ export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
   correctOptionText,
   explanation,
   onProceed,
+  waitingForHost = false,
 }) => {
   const roleInfo = ROLE_DEFINITIONS[role];
 
@@ -107,9 +109,10 @@ export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
           size="lg"
           fullWidth
           onClick={onProceed}
+          disabled={waitingForHost}
           icon={<ArrowRight className="w-5 h-5" />}
         >
-          TIẾN HÀNH HÀNH ĐỘNG ĐÊM
+          {waitingForHost ? "CHỜ GIẢNG VIÊN" : "THỰC HIỆN HÀNH ĐỘNG"}
         </GameButton>
       </div>
     );
@@ -189,9 +192,10 @@ export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
         size="lg"
         fullWidth
         onClick={onProceed}
+        disabled={waitingForHost}
         icon={<ArrowRight className="w-5 h-5" />}
       >
-        TIẾP TỤC ĐÊM (CHẾ ĐỘ CÔNG DÂN)
+        {waitingForHost ? "CHỜ GIẢNG VIÊN" : "TIẾP TỤC"}
       </GameButton>
     </div>
   );
