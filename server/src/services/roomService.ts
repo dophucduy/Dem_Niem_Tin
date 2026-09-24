@@ -165,10 +165,17 @@ export class RoomService {
     const room = await RoomModel.findById(roomId).lean() as unknown as RoomDocument & { _id: Types.ObjectId };
     if (!room) throw new ServiceError("ROOM_NOT_FOUND", "Room not found");
 
-    const [teams, players] = await Promise.all([
-      TeamModel.find({ roomId: room._id }).sort({ teamNumber: 1 }).lean() as unknown as (TeamDocument & { _id: Types.ObjectId })[],
-      PlayerModel.find({ roomId: room._id }).select("teamId connected").lean() as unknown as (PlayerDocument & { _id: Types.ObjectId })[],
-    ]);
+    const players = await PlayerModel.find({ roomId: room._id })
+      .select("teamId connected")
+      .lean() as unknown as (PlayerDocument & { _id: Types.ObjectId })[];
+    const teams = await TeamModel.find({
+      roomId: room._id,
+      // Older deployments pre-created eight empty Team records. They are
+      // capacity placeholders, not participants, so omit them from the lobby.
+      _id: { $in: players.map((player) => player.teamId) },
+    })
+      .sort({ teamNumber: 1 })
+      .lean() as unknown as (TeamDocument & { _id: Types.ObjectId })[];
     const playersByTeam = new Map(players.map((player) => [player.teamId.toString(), player]));
 
     const publicTeams = teams.map((team) => {
