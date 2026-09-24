@@ -223,13 +223,15 @@ export function PlayerPage() {
     }
   };
 
-  const handleExecuteAbility = (targetTeamNumber: number) => {
+  const handleExecuteAbility = (targetTeamNumber?: number) => {
     if (socket.connected && session) {
-      const targetTeam = publicState?.teams.find((t) => t.teamNumber === targetTeamNumber);
+      const targetTeam = targetTeamNumber !== undefined
+        ? publicState?.teams.find((t) => t.teamNumber === targetTeamNumber)
+        : undefined;
       socket.emit(
         CLIENT_EVENTS.USE_ABILITY,
         {
-          targetTeamId: targetTeam?.id || `team-${targetTeamNumber}`,
+          targetTeamId: targetTeam?.id,
         },
         (res: Ack<PlayerActionResult>) => {
           if (!res.ok) setErrorMessage(res.error.message);

@@ -13,7 +13,10 @@ import {
   Moon,
   CheckCircle2,
   Zap,
-  ShieldAlert
+  ShieldAlert,
+  Sun,
+  MessageSquare,
+  Vote
 } from "lucide-react";
 
 export function TestNavigationPage() {
@@ -107,6 +110,30 @@ export function TestNavigationPage() {
       icon: CheckCircle2,
       badge: "Mobile 360px+",
     },
+    {
+      code: "P-08",
+      path: "/player/day/result",
+      name: "Báo cáo Ban ngày (Day Result)",
+      desc: "Thang đo Niềm tin, hồ sơ manh mối công khai, chuẩn bị tranh luận.",
+      icon: Sun,
+      badge: "Mobile 360px+",
+    },
+    {
+      code: "P-09",
+      path: "/player/day/discussion",
+      name: "Phiên Tranh luận & Đối chất (Discussion Stage)",
+      desc: "Đồng hồ 90s, hồ sơ bí mật, chiến thuật phản biện, ngân hàng câu chất vấn, sẵn sàng bỏ phiếu.",
+      icon: MessageSquare,
+      badge: "Mobile 360px+",
+    },
+    {
+      code: "P-10",
+      path: "/player/vote",
+      name: "Phiên Bỏ phiếu Bất tín nhiệm (Voting Ballot)",
+      desc: "Đồng hồ 45s, lưới ứng viên, chọn lý do biểu quyết, modal xác nhận, biên nhận niêm phong.",
+      icon: Vote,
+      badge: "Mobile 360px+",
+    },
   ];
 
   const hostScreens = [
@@ -132,6 +159,30 @@ export function TestNavigationPage() {
       name: "Trình chiếu Câu hỏi Ban đêm (Night Stage)",
       desc: "Bảng câu hỏi khổng lồ, đồng hồ đếm ngược, thang đo Niềm tin, tiến độ nộp bài.",
       icon: Moon,
+      badge: "Projector 1080p",
+    },
+    {
+      code: "H-04",
+      path: "/host/day-result",
+      name: "Sân khấu Báo cáo Vụ án Ban ngày (Day Result Stage)",
+      desc: "Trình chiếu bình minh, công bố manh mối công khai, thang đo Niềm tin toàn lớp.",
+      icon: Sun,
+      badge: "Projector 1080p",
+    },
+    {
+      code: "H-05",
+      path: "/host/discussion",
+      name: "Sân khấu Tranh luận Toàn lớp (Discussion Stage)",
+      desc: "Đồng hồ 90s, chế độ Tâm điểm Đang phát biểu, chọn ngẫu nhiên đội, điều phối tranh luận.",
+      icon: MessageSquare,
+      badge: "Projector 1080p",
+    },
+    {
+      code: "H-06",
+      path: "/host/voting",
+      name: "Sân khấu Bỏ phiếu Tín nhiệm Toàn lớp (Voting Stage)",
+      desc: "Đồng hồ 45s đếm ngược, hòm phiếu điện tử trực tiếp, theo dõi tiến độ nộp phiếu 8 đội.",
+      icon: Vote,
       badge: "Projector 1080p",
     },
   ];

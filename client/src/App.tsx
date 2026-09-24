@@ -10,12 +10,18 @@ import { PlayerResultPage } from "./pages/player/PlayerResultPage";
 import { PlayerAbilityPage } from "./pages/player/PlayerAbilityPage";
 import { PlayerObservePage } from "./pages/player/PlayerObservePage";
 import { PlayerPrivateResultPage } from "./pages/player/PlayerPrivateResultPage";
+import { PlayerDayResultPage } from "./pages/player/PlayerDayResultPage";
+import { PlayerDiscussionPage } from "./pages/player/PlayerDiscussionPage";
+import { PlayerVotingPage } from "./pages/player/PlayerVotingPage";
 
 // Real Host Pages & Layout
 import { HostLayout } from "./pages/host/HostLayout";
 import { HostLobbyPage } from "./pages/host/HostLobbyPage";
 import { HostRoleRevealPage } from "./pages/host/HostRoleRevealPage";
 import { HostNightPage } from "./pages/host/HostNightPage";
+import { HostDayResultPage } from "./pages/host/HostDayResultPage";
+import { HostDiscussionPage } from "./pages/host/HostDiscussionPage";
+import { HostVotingPage } from "./pages/host/HostVotingPage";
 
 // Navigation Directory
 import { TestNavigationPage } from "./pages/TestNavigationPage";
@@ -59,6 +65,15 @@ export default function App() {
 
           {/* Kết quả mật riêng tư (P-07) */}
           <Route path="/player/night/private-result" element={<PlayerPrivateResultPage />} />
+
+          {/* Báo cáo ban ngày (P-08) */}
+          <Route path="/player/day/result" element={<PlayerDayResultPage />} />
+
+          {/* Phiên thảo luận & tranh luận ban ngày (P-09) */}
+          <Route path="/player/day/discussion" element={<PlayerDiscussionPage />} />
+
+          {/* Phiên bỏ phiếu tín nhiệm (P-10) */}
+          <Route path="/player/vote" element={<PlayerVotingPage />} />
         </Route>
 
         {/* ======================================================== */}
@@ -74,6 +89,15 @@ export default function App() {
 
           {/* Sân khấu thử thách đêm & Đồng hồ đếm ngược (H-03) */}
           <Route path="night" element={<HostNightPage />} />
+
+          {/* Sân khấu báo cáo vụ án ban ngày (H-04) */}
+          <Route path="day-result" element={<HostDayResultPage />} />
+
+          {/* Sân khấu tranh luận & đối chất toàn lớp (H-05) */}
+          <Route path="discussion" element={<HostDiscussionPage />} />
+
+          {/* Sân khấu bỏ phiếu tín nhiệm toàn lớp (H-06) */}
+          <Route path="voting" element={<HostVotingPage />} />
         </Route>
 
         {/* ======================================================== */}
@@ -95,9 +119,15 @@ export default function App() {
         <Route path="/test/p06_citizen" element={<Navigate to="/player/night/observe" replace />} />
         <Route path="/test/p07" element={<Navigate to="/player/night/private-result?status=suspicious" replace />} />
         <Route path="/test/p07_safe" element={<Navigate to="/player/night/private-result?status=safe" replace />} />
+        <Route path="/test/p08" element={<Navigate to="/player/day/result" replace />} />
+        <Route path="/test/p09" element={<Navigate to="/player/day/discussion" replace />} />
+        <Route path="/test/p10" element={<Navigate to="/player/vote" replace />} />
         <Route path="/test/h01" element={<Navigate to="/host" replace />} />
         <Route path="/test/h02" element={<Navigate to="/host/role-reveal" replace />} />
         <Route path="/test/h03" element={<Navigate to="/host/night" replace />} />
+        <Route path="/test/h04" element={<Navigate to="/host/day-result" replace />} />
+        <Route path="/test/h05" element={<Navigate to="/host/discussion" replace />} />
+        <Route path="/test/h06" element={<Navigate to="/host/voting" replace />} />
 
         {/* Catch-all redirect to player home */}
         <Route path="*" element={<Navigate to="/" replace />} />
