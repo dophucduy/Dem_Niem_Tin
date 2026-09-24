@@ -9,39 +9,18 @@ export function PlayerDiscussionPage() {
   const { publicState, privateState, session, activeRole } = usePlayerGame();
 
   const [isReady, setIsReady] = useState(false);
-  const [localEndsAt] = useState(() => Date.now() + 90 * 1000);
 
   const round = publicState?.round || 1;
   const myTeamNumber = session?.teamNumber || 4;
-  const role = activeRole || privateState?.role || "INSPECTOR";
-  const effState = privateState?.effectiveState || "SPECIAL";
-  const phaseEndsAt = publicState?.phaseEndsAt ?? localEndsAt;
+  const role = activeRole || privateState?.role;
+  const effState = privateState?.effectiveState;
+  const phaseEndsAt = publicState?.phaseEndsAt;
   const paused = publicState?.paused ?? false;
 
-  // Fallback demo clues if server hasn't sent any
-  const publicClues: Clue[] = publicState?.publicClues?.length 
-    ? publicState.publicClues 
-    : [
-        {
-          id: "clue-1",
-          title: "Bản kê khai tài sản có dấu hiệu chỉnh sửa",
-          description: "Một tài liệu nặc danh xuất hiện tại phòng văn thư, chỉ ra có sự chênh lệch lớn giữa thu nhập thực tế và tài sản sở hữu.",
-          visibility: "public",
-          revealedAt: Date.now(),
-        },
-      ];
+  const publicClues: Clue[] = publicState?.publicClues ?? [];
 
   // Private findings from privateState
-  const privateResults: PrivateResult[] = privateState?.privateResults?.length
-    ? privateState.privateResults
-    : [
-        {
-          id: "res-demo",
-          type: "INSPECTION_RESULT",
-          message: "Mục tiêu Đội 2: CÓ DẤU HIỆU ĐÁNG NGỜ (Người Vụ Lợi). Hãy khéo léo dẫn dắt thảo luận!",
-          createdAt: Date.now(),
-        }
-      ];
+  const privateResults: PrivateResult[] = privateState?.privateResults ?? [];
 
   // Phase Guard & Auto-transition when server advances to VOTING
   useEffect(() => {
@@ -67,6 +46,10 @@ export function PlayerDiscussionPage() {
       navigate("/player/vote");
     }
   };
+
+  if (!role || !effState) {
+    return <div className="w-full max-w-md rounded-2xl border border-night-700 bg-night-900 p-5 text-center text-slate-300">Đang chờ trạng thái người chơi từ máy chủ.</div>;
+  }
 
   return (
     <DiscussionView

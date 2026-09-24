@@ -14,7 +14,6 @@ import {
   PlayerActionResult 
 } from "@dem-niem-tin/shared";
 import { socket } from "../services/socket";
-import { SAMPLE_QUESTIONS } from "../data/sampleQuestions";
 import { ROLE_DEFINITIONS } from "../data/roleDefinitions";
 
 const STORAGE_KEY = "dem_niem_tin_player_session";
@@ -35,7 +34,7 @@ export interface PlayerContextType {
   loading: boolean;
   errorMessage: string | null;
   setErrorMessage: (msg: string | null) => void;
-  handleJoin: (roomCode: string, teamNumber: number, displayName?: string, onSuccess?: () => void) => void;
+  handleJoin: (roomCode: string, displayName: string, onSuccess?: () => void) => void;
   handleLeaveRoom: () => void;
   handleConfirmReady: () => void;
   handleToggleReady: (ready?: boolean) => void;
@@ -50,11 +49,9 @@ export interface PlayerContextType {
     onSuccess?: () => void,
     onError?: (err: string) => void
   ) => void;
-  activeRole: Role;
-  setActiveRole: (role: Role) => void;
-  activeFaction: Faction;
-  activeQuestion: PublicQuestion;
-  questionDetail: typeof SAMPLE_QUESTIONS[0];
+  activeRole: Role | undefined;
+  activeFaction: Faction | undefined;
+  activeQuestion: PublicQuestion | undefined;
   teams: any[];
 }
 
@@ -75,33 +72,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [privateState, setPrivateState] = useState<PrivatePlayerState | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activeRole, setActiveRole] = useState<Role>("INSPECTOR");
-
-  // Initial empty teams: all 8 slots start unconnected and unready
-  const emptyTeams = Array.from({ length: 8 }, (_, i) => ({
-    id: `team-${i + 1}`,
-    teamNumber: i + 1,
-    displayName: undefined,
-    connected: false,
-    ready: false,
-    eliminated: false,
-  }));
-
-  const mockLobby: LobbyState = {
-    roomId: "room-default",
-    roomCode: session?.roomCode || "",
-    status: "LOBBY",
-    teams: emptyTeams as any,
-    connectedCount: 0,
-    capacity: 8,
-  };
 
   useEffect(() => {
     const handleLobbyUpdated = (updatedLobby: LobbyState) => setLobby(updatedLobby);
     const handlePublicState = (state: PublicGameState) => setPublicState(state);
     const handlePrivateState = (state: PrivatePlayerState) => {
       setPrivateState(state);
-      if (state.role) setActiveRole(state.role);
     };
 
     socket.on(SERVER_EVENTS.LOBBY_UPDATED, handleLobbyUpdated);
@@ -119,7 +95,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               setLobby(res.data.room);
               if (res.data.privateState) {
                 setPrivateState(res.data.privateState);
-                if (res.data.privateState.role) setActiveRole(res.data.privateState.role);
               }
               if (res.data.publicState) setPublicState(res.data.publicState);
             } else {
@@ -154,12 +129,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, [session]);
 
-  const handleJoin = (
-    roomCode: string,
-    teamNumber: number,
-    displayName?: string,
-    onSuccess?: () => void
-  ) => {
+  const handleJoin = (roomCode: string, displayName: string, onSuccess?: () => void) => {
     setLoading(true);
     setErrorMessage(null);
 
@@ -170,8 +140,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         CLIENT_EVENTS.JOIN_ROOM,
         {
           roomCode: cleanRoomCode,
-          teamNumber,
-          displayName: displayName?.trim() || undefined,
+          displayName: displayName.trim(),
         },
         (res: Ack<any>) => {
           setLoading(false);
@@ -179,7 +148,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const newSession: StoredSession = {
               roomCode: cleanRoomCode,
               sessionToken: res.data.sessionToken,
-              teamNumber,
+              teamNumber: res.data.teamNumber,
               playerId: res.data.playerId,
               teamId: res.data.teamId,
             };
@@ -248,7 +217,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const handleSubmitAnswer = (selectedOption: number, onResult?: (correct: boolean) => void) => {
-    const currentQ = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
+    const currentQ = publicState?.activeQuestion;
+    if (!currentQ) {
+      setErrorMessage("Chưa nhận được câu hỏi từ máy chủ.");
+      return;
+    }
     if (socket.connected && session) {
       setLoading(true);
       socket.emit(
@@ -306,7 +279,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       );
     } else {
       setLoading(false);
-      onSuccess?.();
+      const msg = "Mất kết nối máy chủ. Hành động chưa được gửi.";
+      setErrorMessage(msg);
+      onError?.(msg);
     }
   };
 
@@ -347,14 +322,16 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       );
     } else {
       setLoading(false);
-      onSuccess?.();
+      const msg = "Mất kết nối máy chủ. Phiếu chưa được gửi.";
+      setErrorMessage(msg);
+      onError?.(msg);
     }
   };
 
-  const activeFaction: Faction = activeRole === "CORRUPTOR" ? "CORRUPTION" : "TRUST";
-  const activeQuestion: PublicQuestion = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
-  const questionDetail = SAMPLE_QUESTIONS.find(q => q.id === activeQuestion.id) || SAMPLE_QUESTIONS[0];
-  const teams = publicState?.teams || lobby?.teams || emptyTeams;
+  const activeRole = privateState?.role;
+  const activeFaction = privateState?.faction;
+  const activeQuestion = publicState?.activeQuestion;
+  const teams = publicState?.teams ?? lobby?.teams ?? [];
 
   return (
     <PlayerContext.Provider
@@ -374,10 +351,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         handleExecuteAbility,
         handleSubmitVote,
         activeRole,
-        setActiveRole,
         activeFaction,
         activeQuestion,
-        questionDetail,
         teams,
       }}
     >

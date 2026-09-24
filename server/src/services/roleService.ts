@@ -16,11 +16,15 @@ function getFactionForRole(role: Role): Faction {
 
 export async function assignRoles(gameId: string): Promise<void> {
   const players = await PlayerModel.find({ gameId }).exec();
-  if (players.length !== 8) {
-    throw new Error("Game must have exactly 8 players to assign roles");
-  }
+  if (players.length < 2) throw new Error("Game must have at least 2 players to assign roles");
 
-  const shuffledRoles = shuffle(ROLE_DISTRIBUTION);
+  const trustRoles = ROLE_DISTRIBUTION.filter((role) => role !== "CORRUPTOR");
+  const corruptorCount = Math.min(players.length - 1, Math.max(1, Math.floor(players.length / 4)));
+  const roles: Role[] = Array.from({ length: corruptorCount }, () => "CORRUPTOR");
+  for (let index = 0; roles.length < players.length; index += 1) {
+    roles.push(trustRoles[index % trustRoles.length]);
+  }
+  const shuffledRoles = shuffle(roles);
 
   const bulkOps = players.map((player, index) => {
     const role = shuffledRoles[index];

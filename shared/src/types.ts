@@ -75,7 +75,8 @@ export type LobbyState = {
   status: RoomStatus;
   teams: PublicTeam[];
   connectedCount: number;
-  capacity: 8;
+  /** null means the room accepts an unlimited number of participants. */
+  capacity: number | null;
 };
 
 export type PublicGameState = {
@@ -146,14 +147,14 @@ export type CreateRoomResult = {
 
 export type JoinRoomPayload = {
   roomCode: string;
-  teamNumber: number;
-  displayName?: string;
+  displayName: string;
 };
 
 export type JoinRoomResult = {
   room: LobbyState;
   playerId: string;
   teamId: string;
+  teamNumber: number;
   sessionToken: string;
 };
 

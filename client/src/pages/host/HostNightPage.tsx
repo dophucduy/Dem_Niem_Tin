@@ -1,21 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHostGame } from "../../context/HostContext";
 import { HostNightStage } from "../../components/host/HostNightStage";
-import { SAMPLE_QUESTIONS } from "../../data/sampleQuestions";
 
 export function HostNightPage() {
   const navigate = useNavigate();
   const { publicState, teams, loading, runGameCommand } = useHostGame();
 
-  const [localPaused, setLocalPaused] = useState(false);
-  const [localEndsAt] = useState(() => Date.now() + 180 * 1000);
-
-  const question = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
+  const question = publicState?.activeQuestion;
   const round = publicState?.round || 1;
   const trust = publicState?.trust || 100;
-  const paused = publicState?.paused ?? localPaused;
-  const phaseEndsAt = publicState?.phaseEndsAt ?? localEndsAt;
+  const paused = publicState?.paused ?? false;
+  const phaseEndsAt = publicState?.phaseEndsAt;
 
   // Auto-navigate to day result when server phase transitions to DAY
   useEffect(() => {
@@ -25,11 +21,7 @@ export function HostNightPage() {
   }, [publicState?.phase, navigate]);
 
   const handlePauseToggle = () => {
-    if (publicState) {
-      runGameCommand(paused ? "resume" : "pause");
-    } else {
-      setLocalPaused(!localPaused);
-    }
+    runGameCommand(paused ? "resume" : "pause");
   };
 
   const handleSkip = () => {

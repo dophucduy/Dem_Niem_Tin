@@ -155,10 +155,8 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
         {screenId === "p01" && (
           <PlayerJoinView
             initialRoomCode="NT8892"
-            initialTeamNumber={4}
-            occupiedTeams={[1, 2]}
-            onJoin={(code, team, name) => {
-              alert(`Xác nhận tham gia test: Phòng ${code}, Đội ${team}, Tên: ${name || "Mặc định"}`);
+            onJoin={(code, name) => {
+              alert(`Xác nhận tham gia test: Phòng ${code}, Tên: ${name}`);
             }}
           />
         )}
@@ -167,7 +165,6 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
           <PlayerLobbyView
             lobby={mockLobby}
             myTeamNumber={4}
-            myPlayerId="player-test-4"
             onLeaveRoom={() => alert("Test sự kiện: Rời phòng")}
           />
         )}

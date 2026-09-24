@@ -10,8 +10,7 @@ export const createRoomSchema = z.object({
 
 export const joinRoomSchema = z.object({
   roomCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/),
-  teamNumber: z.number().int().min(1).max(8),
-  displayName: z.string().trim().min(1).max(40).optional(),
+  displayName: z.string().trim().min(1).max(40),
 });
 
 export const reconnectSchema = z.object({

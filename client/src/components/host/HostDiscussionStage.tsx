@@ -47,15 +47,7 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
 }) => {
   const [selectedSpeakerId, setSelectedSpeakerId] = useState<string | null>(null);
 
-  // Fallback 8 teams if empty
-  const displayTeams: PublicTeam[] = teams.length >= 8 ? teams : Array.from({ length: 8 }).map((_, i) => ({
-    id: `team-${i + 1}`,
-    teamNumber: i + 1,
-    displayName: `Đội ${i + 1}`,
-    connected: true,
-    ready: true,
-    eliminated: false,
-  }));
+  const displayTeams = teams;
 
   const activeSpeaker = displayTeams.find(t => t.id === selectedSpeakerId);
 
@@ -232,7 +224,7 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
           <div className="flex items-center justify-between px-1">
             <div className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <Users className="w-4 h-4 text-trust-400" />
-              DANH SÁCH 8 ĐỘI CHƠI (BẤM ĐỂ CHỈ ĐỊNH PHÁT BIỂU)
+              DANH SÁCH NGƯỜI CHƠI (BẤM ĐỂ CHỈ ĐỊNH PHÁT BIỂU)
             </div>
             <button
               onClick={handleRandomSpeaker}

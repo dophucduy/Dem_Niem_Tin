@@ -162,7 +162,7 @@ export const HostFinalStage: React.FC<HostFinalStageProps> = ({
           <div className="flex items-center justify-between px-1">
             <div className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <Users className="w-4 h-4 text-trust-400" />
-              DANH SÁCH 8 ĐỘI THAM GIA
+              DANH SÁCH NGƯỜI CHƠI
             </div>
             <span className="text-[11px] font-mono text-slate-500">
               Tổng kết 3 vòng

@@ -129,14 +129,14 @@ export function PlayerPage() {
 
     socket.emit(
       CLIENT_EVENTS.JOIN_ROOM,
-      { roomCode, teamNumber, displayName },
+      { roomCode, displayName: displayName?.trim() || "Người chơi" },
       (res: Ack<any>) => {
         setLoading(false);
         if (res.ok) {
           const newSession: StoredSession = {
             roomCode,
             sessionToken: res.data.sessionToken,
-            teamNumber,
+            teamNumber: res.data.teamNumber,
             playerId: res.data.playerId,
             teamId: res.data.teamId,
           };
@@ -290,7 +290,7 @@ export function PlayerPage() {
             initialRoomCode={codeFromUrl}
             loading={loading}
             errorMessage={errorMessage}
-            onJoin={handleJoin}
+            onJoin={(roomCode, displayName) => handleJoin(roomCode, 1, displayName)}
           />
         )}
 
@@ -305,7 +305,6 @@ export function PlayerPage() {
               capacity: 8
             }}
             myTeamNumber={session?.teamNumber || 1}
-            myPlayerId={session?.playerId || "p1"}
             onLeaveRoom={handleLeaveRoom}
           />
         )}

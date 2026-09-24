@@ -10,8 +10,6 @@ export function PlayerFinalPage() {
     session, 
     teams, 
     privateState, 
-    activeRole, 
-    activeFaction, 
     handleLeaveRoom 
   } = usePlayerGame();
 
@@ -21,6 +19,10 @@ export function PlayerFinalPage() {
   const myTeam = teams.find((t) => t.teamNumber === myTeamNumber);
   const isMyTeamEliminated = myTeam?.eliminated ?? false;
 
+  if (!privateState) {
+    return <div className="w-full max-w-md rounded-2xl border border-night-700 bg-night-900 p-5 text-center text-slate-300">Đang chờ kết quả cuối từ máy chủ.</div>;
+  }
+
   const onLeave = () => {
     handleLeaveRoom();
     navigate("/player/join");
@@ -29,8 +31,8 @@ export function PlayerFinalPage() {
   return (
     <FinalSummaryView
       myTeamNumber={myTeamNumber}
-      myRole={privateState?.role || activeRole}
-      myFaction={privateState?.faction || activeFaction}
+      myRole={privateState.role}
+      myFaction={privateState.faction}
       isMyTeamEliminated={isMyTeamEliminated}
       trust={trust}
       teams={teams}

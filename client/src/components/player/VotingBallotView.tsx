@@ -51,15 +51,7 @@ export const VotingBallotView: React.FC<VotingBallotViewProps> = ({
     "Có dấu hiệu can thiệp ngầm ban đêm",
   ];
 
-  // 8 teams fallback
-  const displayTeams: PublicTeam[] = teams.length >= 8 ? teams : Array.from({ length: 8 }).map((_, i) => ({
-    id: `team-${i + 1}`,
-    teamNumber: i + 1,
-    displayName: `Đội ${i + 1}`,
-    connected: true,
-    ready: true,
-    eliminated: false,
-  }));
+  const displayTeams = teams;
 
   const selectedTeam = displayTeams.find(t => t.teamNumber === selectedTeamNumber);
   const votedTeam = displayTeams.find(t => t.teamNumber === votedTargetTeamNumber);
@@ -177,7 +169,7 @@ export const VotingBallotView: React.FC<VotingBallotViewProps> = ({
         </p>
       </div>
 
-      {/* Candidate Grid (8 teams) */}
+      {/* Candidate Grid */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs px-1">
           <span className="font-bold text-slate-300 uppercase tracking-wider">

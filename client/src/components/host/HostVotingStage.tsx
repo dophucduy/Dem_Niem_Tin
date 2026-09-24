@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { PublicTeam } from "@dem-niem-tin/shared";
 import { TrustMeter } from "../common/TrustMeter";
 import { PhaseTimer } from "../common/PhaseTimer";
@@ -6,15 +6,11 @@ import { GameButton } from "../common/GameButton";
 import { 
   Vote, 
   Lock, 
-  CheckCircle2, 
-  Clock, 
   Pause, 
   Play, 
   SkipForward, 
   Users, 
   HelpCircle, 
-  ShieldAlert, 
-  Layers,
   Inbox
 } from "lucide-react";
 
@@ -40,33 +36,10 @@ export const HostVotingStage: React.FC<HostVotingStageProps> = ({
   onSkipTimer,
   loading = false,
 }) => {
-  // 8 teams fallback
-  const displayTeams: PublicTeam[] = teams.length >= 8 ? teams : Array.from({ length: 8 }).map((_, i) => ({
-    id: `team-${i + 1}`,
-    teamNumber: i + 1,
-    displayName: `Đội ${i + 1}`,
-    connected: true,
-    ready: true,
-    eliminated: false,
-  }));
-
-  // Track voted teams locally for visual demonstration on host
-  // In real multiplayer, this can be synced or simulated
-  const [votedTeamIds, setVotedTeamIds] = useState<Set<string>>(() => new Set(["team-1", "team-3"]));
+  const displayTeams = teams;
 
   const activeTeams = displayTeams.filter(t => !t.eliminated);
   const totalActive = activeTeams.length;
-  const votedCount = activeTeams.filter(t => votedTeamIds.has(t.id)).length;
-  const progressPercent = totalActive > 0 ? Math.round((votedCount / totalActive) * 100) : 0;
-
-  const toggleTeamVoted = (teamId: string) => {
-    setVotedTeamIds(prev => {
-      const next = new Set(prev);
-      if (next.has(teamId)) next.delete(teamId);
-      else next.add(teamId);
-      return next;
-    });
-  };
 
   return (
     <div className="w-full min-h-[92vh] flex flex-col justify-between p-6 lg:p-8 space-y-6 animate-fade-in text-white">
@@ -139,26 +112,14 @@ export const HostVotingStage: React.FC<HostVotingStageProps> = ({
                   Hòm phiếu bảo mật toàn lớp
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-black text-white font-mono">
-                  {votedCount} / {totalActive} PHIẾU
+                  {totalActive} ĐỘI ĐỦ ĐIỀU KIỆN
                 </h2>
                 <p className="text-xs text-slate-300 max-w-sm mx-auto">
                   Các đội đang thao tác nộp phiếu bí mật trên điện thoại cá nhân.
                 </p>
               </div>
 
-              {/* Progress Bar */}
-              <div className="max-w-md mx-auto space-y-1.5 pt-2">
-                <div className="h-3 rounded-full bg-night-950 border border-night-700 overflow-hidden p-0.5">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-corruption-500 via-amber-400 to-righteous-400 transition-all duration-500 shadow-glow"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-[11px] font-mono text-slate-400 font-bold">
-                  <span>Tiến độ thu thập</span>
-                  <span className="text-white">{progressPercent}%</span>
-                </div>
-              </div>
+              <p className="text-xs text-slate-400">Kết quả và số phiếu sẽ hiển thị sau khi máy chủ đóng phiên bỏ phiếu.</p>
             </div>
 
             {/* Pedagogic Rule Notice */}
@@ -179,40 +140,32 @@ export const HostVotingStage: React.FC<HostVotingStageProps> = ({
           <div className="flex items-center justify-between px-1">
             <div className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <Users className="w-4 h-4 text-trust-400" />
-              TIẾN ĐỘ NỘP PHIẾU CỦA 8 ĐỘI
+              NGƯỜI CHƠI CÓ THỂ BỎ PHIẾU
             </div>
             <span className="text-[11px] text-slate-500 font-mono">
-              (Bấm vào thẻ đội để chuyển trạng thái test)
+              Phiếu được giữ kín đến khi máy chủ công bố kết quả
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 flex-1">
             {displayTeams.map((team) => {
               const isEliminated = team.eliminated;
-              const hasVoted = votedTeamIds.has(team.id);
 
               return (
                 <div
                   key={team.id}
-                  onClick={() => !isEliminated && toggleTeamVoted(team.id)}
                   className={`
-                    p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between cursor-pointer
+                    p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between
                     ${
                       isEliminated
                         ? "opacity-40 bg-night-950/50 border-night-800 cursor-not-allowed"
-                        : hasVoted
-                        ? "bg-righteous-950/70 border-righteous-500/60 shadow-glow-righteous"
-                        : "glass-panel border-night-700/80 hover:border-slate-500"
+                      : "glass-panel border-night-700/80"
                     }
                   `}
                 >
                   <div className="flex items-center justify-between">
                     <div
-                      className={`w-8 h-8 rounded-xl font-mono font-black text-sm flex items-center justify-center ${
-                        hasVoted
-                          ? "bg-righteous-500 text-night-950"
-                          : "bg-night-900 border border-night-700 text-white"
-                      }`}
+                      className="w-8 h-8 rounded-xl font-mono font-black text-sm flex items-center justify-center bg-night-900 border border-night-700 text-white"
                     >
                       0{team.teamNumber}
                     </div>
@@ -221,15 +174,10 @@ export const HostVotingStage: React.FC<HostVotingStageProps> = ({
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-night-800 text-slate-500 border border-night-700">
                         ĐÃ LOẠI
                       </span>
-                    ) : hasVoted ? (
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-righteous-500/20 text-righteous-300 border border-righteous-500/40 flex items-center gap-1 shadow-sm">
-                        <CheckCircle2 className="w-3 h-3 text-righteous-400" />
-                        ĐÃ NỘP PHIẾU
-                      </span>
                     ) : (
                       <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                        <Clock className="w-3 h-3 animate-spin" />
-                        ĐANG SUY NGHĨ
+                        <Lock className="w-3 h-3" />
+                        PHIẾU ĐƯỢC GIỮ KÍN
                       </span>
                     )}
                   </div>
@@ -239,8 +187,7 @@ export const HostVotingStage: React.FC<HostVotingStageProps> = ({
                       {team.displayName}
                     </div>
                     <div className="text-[11px] text-slate-400 flex items-center justify-between pt-0.5">
-                      <span>{isEliminated ? "Không tham gia" : hasVoted ? "Phiếu đã niêm phong" : "Chưa hoàn tất nộp"}</span>
-                      {hasVoted && <Lock className="w-3 h-3 text-righteous-400" />}
+                      <span>{isEliminated ? "Không tham gia" : "Trạng thái phiếu không công khai"}</span>
                     </div>
                   </div>
                 </div>

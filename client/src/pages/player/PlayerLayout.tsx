@@ -60,8 +60,8 @@ function PlayerLayoutContent() {
       {/* Dynamic Header */}
       <AppHeader
         roleMode="PLAYER"
-        roomCode={session?.roomCode || "NT8892"}
-        teamDisplayName={`Đội ${session?.teamNumber || 4}`}
+        roomCode={session?.roomCode || "—"}
+        teamDisplayName={session ? `Đội ${session.teamNumber}` : ""}
         phase={publicState?.phase || (isNight ? "NIGHT" : "LOBBY")}
         round={publicState?.round || 1}
         trust={publicState?.trust || 100}

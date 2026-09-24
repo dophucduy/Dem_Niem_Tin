@@ -7,7 +7,6 @@ export function PlayerAbilityPage() {
   const navigate = useNavigate();
   const { activeRole, session, publicState, teams, loading, handleExecuteAbility, privateState } = usePlayerGame();
 
-  const [submittedTarget, setSubmittedTarget] = useState<number | undefined>(undefined);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const myTeam = session?.teamNumber || 4;
@@ -18,21 +17,23 @@ export function PlayerAbilityPage() {
       if (publicState.phase === "NIGHT" && publicState.activeQuestion !== undefined) {
         navigate("/player/night/question");
       } else if (publicState.phase === "DAY") {
-        const targetParam = submittedTarget !== undefined ? `&target=${submittedTarget}` : "";
-        navigate(`/player/night/private-result?status=suspicious${targetParam}`);
+        navigate("/player/night/private-result");
       } else if (publicState.phase === "VOTING") {
         navigate("/player/vote");
       } else if (publicState.phase === "LOBBY") {
         navigate("/player/role");
       }
     }
-  }, [session, publicState?.phase, publicState?.activeQuestion, submittedTarget, navigate]);
+  }, [session, publicState?.phase, publicState?.activeQuestion, navigate]);
+
+  if (!activeRole || !privateState) {
+    return <div className="w-full max-w-md rounded-2xl border border-night-700 bg-night-900 p-5 text-center text-slate-300">Đang chờ trạng thái năng lực từ máy chủ.</div>;
+  }
 
   const onExecute = (targetTeamNumber?: number) => {
     handleExecuteAbility(
       targetTeamNumber,
       () => {
-        setSubmittedTarget(targetTeamNumber);
         setIsSubmitted(true);
       },
       (err) => {
@@ -46,14 +47,13 @@ export function PlayerAbilityPage() {
       alert("Đội bạn đã gửi hành động đêm! Vui lòng chờ hết đêm và bình minh lên để nhận báo cáo nghiệp vụ.");
       return;
     }
-    const targetParam = submittedTarget !== undefined ? `&target=${submittedTarget}` : "";
-    navigate(`/player/night/private-result?status=suspicious${targetParam}`);
+    navigate("/player/night/private-result");
   };
 
   return (
     <NightAbilityView
       role={activeRole}
-      effectiveState={privateState?.effectiveState || "SPECIAL"}
+      effectiveState={privateState.effectiveState}
       myTeamNumber={myTeam}
       teams={teams}
       onExecuteAbility={onExecute}

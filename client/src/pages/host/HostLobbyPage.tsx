@@ -14,7 +14,6 @@ export function HostLobbyPage() {
     handleStartGame, 
     handleResetRoom, 
     handleDestroyRoom,
-    handleSimulateFullLobby 
   } = useHostGame();
 
   const onStart = () => {
@@ -34,7 +33,7 @@ export function HostLobbyPage() {
             </div>
             <h1 className="text-3xl font-black text-white tracking-wide">ĐIỀU KHIỂN PHÒNG HỌC</h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-2">
-              Tạo phòng cho 8 đội tham gia.
+              Tạo phòng và chờ những người chơi tham gia.
             </p>
           </div>
           {errorMessage && (
@@ -69,7 +68,6 @@ export function HostLobbyPage() {
       onDestroyRoom={handleDestroyRoom}
       loading={loading}
       errorMessage={errorMessage}
-      onSimulateFullLobby={handleSimulateFullLobby}
     />
   );
 }

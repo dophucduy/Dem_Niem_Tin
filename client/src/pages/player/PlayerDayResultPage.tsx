@@ -17,7 +17,7 @@ import {
 
 export function PlayerDayResultPage() {
   const navigate = useNavigate();
-  const { publicState, session, activeRole, teams } = usePlayerGame();
+  const { publicState, session, teams } = usePlayerGame();
 
   const round = publicState?.round || 1;
   const trust = publicState?.trust ?? 100;
@@ -41,16 +41,7 @@ export function PlayerDayResultPage() {
     }
   }, [session, publicState?.phase, publicState?.activeQuestion, navigate]);
 
-  // Fallback demo clues if none from server yet
-  const displayClues = publicClues.length > 0 ? publicClues : [
-    {
-      id: "clue-demo-1",
-      title: "Bản kê khai tài sản có dấu hiệu chỉnh sửa",
-      description: "Một tài liệu nặc danh xuất hiện tại phòng văn thư, chỉ ra có sự chênh lệch lớn giữa thu nhập thực tế và tài sản sở hữu.",
-      visibility: "public" as const,
-      revealedAt: Date.now(),
-    }
-  ];
+  const displayClues = publicClues;
 
   return (
     <div className="w-full max-w-md mx-auto space-y-4 animate-fade-in">
