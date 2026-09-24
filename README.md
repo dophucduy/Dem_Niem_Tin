@@ -68,6 +68,13 @@ npm.cmd run test --workspace server -- tests/gameRuntime.integration.test.ts
 
 Repository có sẵn `render.yaml` và `vercel.json`.
 
+Vercel phải dùng **Root Directory để trống** (gốc repository), không đặt là `client`.
+Gốc repository mới có khai báo npm workspaces cho `shared`, `client` và `server`.
+Các lệnh install/build và thư mục kết quả `client/dist` đã được khai báo trong `vercel.json`.
+Sau khi đổi Root Directory, lưu lại và redeploy bản mới nhất.
+Commit `package-lock.json` cùng các thay đổi dependency để Windows và Linux dùng cùng phiên bản;
+không xóa các dependency tùy chọn dành cho Linux khỏi lockfile.
+
 Render cần các biến môi trường:
 
 ```env
