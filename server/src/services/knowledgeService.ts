@@ -1,5 +1,5 @@
 import { QuestionModel } from "../models/Question.js";
-import { PlayerModel } from "../models/Player.js";
+import { PlayerModel, TeamModel } from "../models/index.js";
 import type { QuestionDifficulty } from "@dem-niem-tin/shared";
 import { ServiceError } from "./errors.js";
 
@@ -27,6 +27,11 @@ export async function submitAnswer(
   questionId: string,
   selectedOption: number,
 ): Promise<boolean> {
+  const activePlayer = await PlayerModel.findOne({ _id: playerId, gameId }).select("teamId").lean();
+  if (!activePlayer) throw new ServiceError("UNAUTHORIZED", "Player is not part of this game");
+  const activeTeam = await TeamModel.exists({ _id: activePlayer.teamId, gameId, eliminated: false });
+  if (!activeTeam) throw new ServiceError("FORBIDDEN", "Eliminated players cannot answer questions");
+
   const question = await QuestionModel.findById(questionId).select("+correctAnswer").exec();
   if (!question) throw new ServiceError("VALIDATION_ERROR", "Question not found");
   const answer = question.options[selectedOption];
@@ -34,7 +39,7 @@ export async function submitAnswer(
 
   const isCorrect = question.correctAnswer === answer;
   const player = await PlayerModel.findOneAndUpdate(
-    { _id: playerId, gameId, answeredRound: { $ne: round } },
+    { _id: playerId, gameId, teamId: activePlayer.teamId, answeredRound: { $ne: round } },
     {
       $set: {
         answeredRound: round,

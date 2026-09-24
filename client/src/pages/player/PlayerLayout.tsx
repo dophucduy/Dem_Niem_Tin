@@ -11,6 +11,17 @@ function PlayerLayoutContent() {
   useEffect(() => {
     if (!session || !publicState) return;
 
+    const myTeam = publicState.teams.find((team) => team.id === session.teamId);
+    if (publicState.gamePhase === "FINAL") {
+      if (location.pathname !== "/player/final") navigate("/player/final", { replace: true });
+      return;
+    }
+    if (myTeam?.eliminated) {
+      const eliminatedRoute = publicState.gamePhase === "VOTE_RESULT" ? "/player/vote/result" : "/player/night/observe";
+      if (location.pathname !== eliminatedRoute) navigate(eliminatedRoute, { replace: true });
+      return;
+    }
+
     let target: string | null = null;
     switch (publicState.gamePhase) {
       case "LOBBY":
@@ -44,9 +55,6 @@ function PlayerLayoutContent() {
       case "TRUST_UPDATE":
       case "NEXT_ROUND":
         target = "/player/day/result";
-        break;
-      case "FINAL":
-        target = "/player/final";
         break;
     }
 
