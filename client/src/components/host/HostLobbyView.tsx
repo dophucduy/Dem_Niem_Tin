@@ -21,7 +21,6 @@ interface HostLobbyViewProps {
   onDestroyRoom?: () => void;
   loading?: boolean;
   errorMessage?: string | null;
-  onSimulateFullLobby?: (excludeTeam?: number) => void;
 }
 
 export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
@@ -31,14 +30,12 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
   onDestroyRoom,
   loading = false,
   errorMessage = null,
-  onSimulateFullLobby,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
 
   const connectedCount = lobby.teams.filter((t) => t.connected).length;
-  const readyCount = lobby.teams.filter((t) => t.connected && t.ready).length;
-  const isReadyToStart = connectedCount === 8 && readyCount === 8;
+  const canStart = connectedCount >= 2 && connectedCount === lobby.teams.length;
 
   // In production or LAN, players scan or access window.location.origin/?code=...
   const joinUrl = typeof window !== "undefined"
@@ -114,36 +111,32 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
             <Users className="w-4 h-4 text-trust-400" />
             Đã tham gia:
             <span className="font-mono font-bold text-base text-white px-2 py-0.5 rounded bg-night-900 border border-night-700">
-              {connectedCount} / 8 ĐỘI
+              {connectedCount} NGƯỜI CHƠI
             </span>
           </div>
 
-          {isReadyToStart ? (
-            <span className="text-xs font-bold text-righteous-400 px-3 py-1 rounded-full bg-righteous-950/80 border border-righteous-600/40 animate-badge-pop">
-              ✓ Cả 8 đội đã kết nối và sẵn sàng!
-            </span>
-          ) : (
-            <span className="text-xs text-amber-400/90 font-medium">
-              ({connectedCount}/8 kết nối • {readyCount}/8 sẵn sàng)
-            </span>
-          )}
+          <span className="text-xs text-amber-400/90 font-medium">
+            {connectedCount < 2 ? "Cần ít nhất 2 người chơi để bắt đầu." : canStart ? "Người chơi đã kết nối. Host có thể bắt đầu." : "Đang chờ người tham gia kết nối lại."}
+          </span>
         </div>
       </div>
 
-      {/* 8 Team Slots Grid */}
+      {/* Current Participants */}
       <div>
         <div className="flex items-center justify-between mb-4 px-2">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
             <Shield className="w-4 h-4 text-trust-400" />
-            Trạng thái kết nối 8 Đội chơi
+            Danh sách người tham gia ({lobby.teams.length})
           </h2>
         </div>
 
+        {lobby.teams.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-night-700 p-8 text-center text-slate-400">Chưa có người chơi tham gia. Chia sẻ mã phòng để bắt đầu.</div>
+        ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }, (_, i) => i + 1).map((teamNum) => {
-            const team = lobby.teams.find((t) => t.teamNumber === teamNum);
-            const isConnected = !!team?.connected;
-            const isTeamReady = !!team?.ready;
+            {lobby.teams.map((team) => {
+            const teamNum = team.teamNumber;
+            const isConnected = team.connected;
 
             return (
               <div
@@ -152,9 +145,7 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
                   p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden
                   ${
                     isConnected
-                      ? isTeamReady
-                        ? "bg-night-900/95 border-righteous-500/50 text-white shadow-lg ring-1 ring-righteous-500/20"
-                        : "bg-night-900/90 border-trust-500/40 text-white shadow-lg"
+                    ? "bg-night-900/90 border-trust-500/40 text-white shadow-lg"
                       : "bg-night-950/40 border-night-800/80 text-slate-600 border-dashed"
                   }
                 `}
@@ -166,17 +157,10 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
                   </span>
                   <div className="flex items-center gap-1.5">
                     {isConnected ? (
-                      isTeamReady ? (
-                        <span className="flex items-center gap-1 text-[11px] font-bold text-righteous-400">
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                          SẴN SÀNG
-                        </span>
-                      ) : (
                         <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400">
                           <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                           ĐÃ KẾT NỐI
                         </span>
-                      )
                     ) : (
                       <span className="text-[11px] font-medium text-slate-600">
                         CHỜ KẾT NỐI
@@ -187,17 +171,18 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
 
                 {/* Team Number */}
                 <div className="text-2xl font-black text-white font-mono tracking-tight mb-1">
-                  ĐỘI {teamNum}
+                  {team.displayName}
                 </div>
 
                 {/* Display Name or Status */}
                 <div className="text-xs text-slate-400 truncate">
-                  {team?.displayName || (isConnected ? (isTeamReady ? "Đã sẵn sàng thi đấu" : "Đang chờ bấm sẵn sàng") : "Chưa có thiết bị kết nối")}
+                  Người chơi {teamNum}
                 </div>
-              </div>
-            );
+                </div>
+              );
           })}
         </div>
+        )}
       </div>
 
       {/* Host Controls */}
@@ -211,31 +196,10 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs text-amber-400">
-            {!isReadyToStart && `Còn ${8 - readyCount} đội chưa sẵn sàng`}
+            {lobby.teams.length === 0 ? "Đang chờ người chơi tham gia" : `${connectedCount} người đang kết nối`}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-            {onSimulateFullLobby && !isReadyToStart && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onSimulateFullLobby(1)}
-                  className="px-3 py-2 rounded-xl bg-night-800 hover:bg-night-700 text-trust-300 text-xs font-bold border border-trust-600/40 transition-all cursor-pointer"
-                  title="Giả lập các đội 2-8 và chừa Đội 1 cho bạn tham gia"
-                >
-                  ⚡ Giả lập 7 đội
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSimulateFullLobby()}
-                  className="px-2.5 py-2 rounded-xl bg-night-900 hover:bg-night-800 text-slate-400 hover:text-slate-200 text-xs font-medium border border-night-700 transition-all cursor-pointer"
-                  title="Giả lập toàn bộ 8 đội để bắt đầu ván ngay"
-                >
-                  Đủ 8 đội
-                </button>
-              </div>
-            )}
-
             {onDestroyRoom && (
               <GameButton
                 variant="outline"
@@ -262,7 +226,7 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
               variant="primary"
               size="lg"
               onClick={onStartGame}
-              disabled={!isReadyToStart || loading}
+              disabled={!canStart || loading}
               loading={loading}
               icon={<Play className="w-5 h-5 fill-night-950" />}
             >

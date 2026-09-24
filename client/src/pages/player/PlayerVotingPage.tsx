@@ -15,11 +15,10 @@ export function PlayerVotingPage() {
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [votedTarget, setVotedTarget] = useState<number | undefined>(undefined);
-  const [localEndsAt] = useState(() => Date.now() + 45 * 1000);
 
   const round = publicState?.round || 1;
   const myTeamNumber = session?.teamNumber || 4;
-  const phaseEndsAt = publicState?.phaseEndsAt ?? localEndsAt;
+  const phaseEndsAt = publicState?.phaseEndsAt;
   const paused = publicState?.paused ?? false;
 
   // Phase Guard: Must be in VOTING phase to cast ballot

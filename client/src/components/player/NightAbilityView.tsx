@@ -41,7 +41,7 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
   role,
   effectiveState,
   myTeamNumber,
-  teams = Array.from({ length: 8 }, (_, i) => ({ teamNumber: i + 1, eliminated: false })),
+  teams = [],
   onExecuteAbility,
   onProceedToResult,
   isSubmitted = false,

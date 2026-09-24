@@ -1,4 +1,4 @@
-import { GAME_CONFIG, type LobbyState, type RoomStatus } from "@dem-niem-tin/shared";
+import { type LobbyState, type RoomStatus } from "@dem-niem-tin/shared";
 import { Types } from "mongoose";
 import { PlayerModel, RoomModel, TeamModel, type RoomDocument, type TeamDocument, type PlayerDocument } from "../models/index.js";
 import { ServiceError } from "./errors.js";
@@ -16,6 +16,8 @@ type PlayerSession = RoomSession & {
   teamId: string;
   replacedSocketId?: string;
 };
+
+type JoinedPlayerSession = PlayerSession & { teamNumber: number };
 
 function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
@@ -37,14 +39,6 @@ export class RoomService {
         const createdRoomId = room._id;
         roomId = createdRoomId;
 
-        await TeamModel.insertMany(
-          Array.from({ length: GAME_CONFIG.teamCount }, (_, index) => ({
-            roomId: createdRoomId,
-            teamNumber: index + 1,
-            displayName: `ĐỘI ${index + 1}`,
-          })),
-        );
-
         return {
           roomId: createdRoomId.toString(),
           roomCode,
@@ -64,20 +58,31 @@ export class RoomService {
 
   async joinRoom(input: {
     roomCode: string;
-    teamNumber: number;
-    displayName?: string;
+    teamNumber?: number;
+    displayName: string;
     socketId: string;
-  }): Promise<PlayerSession & { lobby: LobbyState }> {
+  }): Promise<JoinedPlayerSession & { lobby: LobbyState }> {
     const room = await RoomModel.findOne({ roomCode: input.roomCode, status: "LOBBY" });
     if (!room) throw new ServiceError("ROOM_NOT_FOUND", "Room not found or no longer joinable");
 
-    const playerCount = await PlayerModel.countDocuments({ roomId: room._id });
-    if (playerCount >= GAME_CONFIG.teamCount) {
-      throw new ServiceError("ROOM_FULL", "Room already has eight players");
+    const highestExistingTeam = await TeamModel.findOne({ roomId: room._id }).sort({ teamNumber: -1 }).select("teamNumber").lean();
+    if (highestExistingTeam && (room.nextTeamNumber ?? 1) <= highestExistingTeam.teamNumber) {
+      await RoomModel.updateOne({ _id: room._id }, { $max: { nextTeamNumber: highestExistingTeam.teamNumber + 1 } });
     }
 
-    const team = await TeamModel.findOne({ roomId: room._id, teamNumber: input.teamNumber });
-    if (!team) throw new ServiceError("TEAM_UNAVAILABLE", "Selected team does not exist");
+    const allocatedRoom = await RoomModel.findOneAndUpdate(
+      { _id: room._id, status: "LOBBY" },
+      { $inc: { nextTeamNumber: 1 } },
+      { new: false },
+    );
+    if (!allocatedRoom) throw new ServiceError("ROOM_NOT_FOUND", "Room is no longer accepting participants");
+
+    const teamNumber = allocatedRoom.nextTeamNumber ?? 1;
+    const team = await TeamModel.create({
+      roomId: room._id,
+      teamNumber,
+      displayName: input.displayName,
+    });
 
     const sessionToken = createSessionToken();
     try {
@@ -89,22 +94,19 @@ export class RoomService {
         socketId: input.socketId,
       });
 
-      if (input.displayName) {
-        team.displayName = input.displayName;
-        await team.save();
-      }
-
       return {
         roomId: room._id.toString(),
         roomCode: room.roomCode,
         sessionToken,
         playerId: player._id.toString(),
         teamId: team._id.toString(),
+        teamNumber,
         lobby: await this.getLobby(room._id),
       };
     } catch (error) {
+      await TeamModel.deleteOne({ _id: team._id });
       if (isDuplicateKeyError(error)) {
-        throw new ServiceError("TEAM_UNAVAILABLE", "Selected team is already occupied");
+        throw new ServiceError("CONFLICT", "Could not allocate a participant number; please retry");
       }
       throw error;
     }
@@ -187,7 +189,7 @@ export class RoomService {
       status: room.status as RoomStatus,
       teams: publicTeams,
       connectedCount: publicTeams.filter((team) => team.connected).length,
-      capacity: GAME_CONFIG.teamCount,
+      capacity: null,
     };
   }
 }

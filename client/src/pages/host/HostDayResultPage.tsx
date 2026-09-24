@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useHostGame } from "../../context/HostContext";
 import { HostDayResultStage } from "../../components/host/HostDayResultStage";
@@ -7,19 +7,14 @@ export function HostDayResultPage() {
   const navigate = useNavigate();
   const { publicState, teams, loading, runGameCommand } = useHostGame();
 
-  const [localPaused, setLocalPaused] = useState(false);
 
   const round = publicState?.round || 1;
   const trust = publicState?.trust ?? 100;
-  const paused = publicState?.paused ?? localPaused;
+  const paused = publicState?.paused ?? false;
   const publicClues = publicState?.publicClues || [];
 
   const handlePauseToggle = () => {
-    if (publicState) {
-      runGameCommand(paused ? "resume" : "pause");
-    } else {
-      setLocalPaused(!localPaused);
-    }
+    runGameCommand(paused ? "resume" : "pause");
   };
 
   const handleStartDiscussion = () => {

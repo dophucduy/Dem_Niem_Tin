@@ -10,6 +10,7 @@ const roomSchema = new Schema(
       required: true,
     },
     hostName: { type: String, trim: true, maxlength: 60 },
+    nextTeamNumber: { type: Number, default: 1, min: 1 },
     hostSessionTokenHash: { type: String, required: true, select: false },
   },
   { timestamps: true, versionKey: false },

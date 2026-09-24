@@ -1,28 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { Scale, Users, Shield, ArrowRight, AlertCircle, X } from "lucide-react";
+import { Scale, ArrowRight, AlertCircle, X } from "lucide-react";
 import { GameButton } from "../common/GameButton";
 
 interface PlayerJoinViewProps {
   initialRoomCode?: string;
-  initialTeamNumber?: number;
   loading?: boolean;
   errorMessage?: string | null;
-  onJoin: (roomCode: string, teamNumber: number, displayName?: string) => void;
-  occupiedTeams?: number[]; // list of team numbers 1-8 already taken in this room
-  currentLobbyRoomCode?: string;
+  onJoin: (roomCode: string, displayName: string) => void;
 }
 
 export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
   initialRoomCode = "",
-  initialTeamNumber = 1,
   loading = false,
   errorMessage = null,
   onJoin,
-  occupiedTeams = [],
-  currentLobbyRoomCode,
 }) => {
   const [roomCode, setRoomCode] = useState<string>(initialRoomCode.toUpperCase());
-  const [selectedTeam, setSelectedTeam] = useState<number>(initialTeamNumber);
   const [displayName, setDisplayName] = useState<string>("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -33,10 +26,6 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
   }, [initialRoomCode]);
 
   const cleanCode = roomCode.trim().toUpperCase();
-  // Only mark teams as occupied if user has typed a room code AND it matches the current loaded room
-  const isMatchingRoom = Boolean(cleanCode && currentLobbyRoomCode && cleanCode === currentLobbyRoomCode.trim().toUpperCase());
-  const effectiveOccupiedTeams = isMatchingRoom ? occupiedTeams : [];
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
@@ -47,12 +36,12 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
       return;
     }
 
-    if (effectiveOccupiedTeams.includes(selectedTeam)) {
-      setValidationError(`Đội ${selectedTeam} đã có người chọn. Vui lòng chọn đội khác.`);
+    if (!displayName.trim()) {
+      setValidationError("Vui lòng nhập tên người chơi.");
       return;
     }
 
-    onJoin(cleanCode, selectedTeam, displayName.trim() || undefined);
+    onJoin(cleanCode, displayName.trim());
   };
 
   return (
@@ -106,7 +95,7 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
           <div className="relative">
             <input
               type="text"
-              maxLength={8}
+          maxLength={6}
               placeholder="VD: NT4821"
               value={roomCode}
               onChange={(e) => {
@@ -132,68 +121,19 @@ export const PlayerJoinView: React.FC<PlayerJoinViewProps> = ({
           </div>
         </div>
 
-        {/* Team Selection Grid (8 Teams) */}
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
-            Chọn đội <span className="text-trust-400">*</span>
-          </label>
-          <div className="grid grid-cols-4 gap-2">
-            {Array.from({ length: 8 }, (_, i) => i + 1).map((teamNum) => {
-              const isOccupied = effectiveOccupiedTeams.includes(teamNum);
-              const isSelected = selectedTeam === teamNum;
-
-              return (
-                <button
-                  key={teamNum}
-                  type="button"
-                  disabled={isOccupied}
-                  onClick={() => {
-                    setSelectedTeam(teamNum);
-                    setValidationError(null);
-                  }}
-                  className={`
-                    relative p-3 rounded-xl border font-bold text-center transition-all duration-200 select-none cursor-pointer
-                    ${
-                      isSelected
-                        ? "bg-gradient-to-b from-trust-500/20 to-trust-600/10 border-trust-400 text-trust-300 shadow-glow scale-[1.03]"
-                        : isOccupied
-                        ? "bg-night-950/40 border-night-800 text-slate-600 cursor-not-allowed opacity-50"
-                        : "bg-night-900/60 border-night-700 text-slate-300 hover:border-slate-500 hover:text-white"
-                    }
-                  `}
-                >
-                  <div className="text-[10px] text-slate-400 font-medium uppercase">
-                    Đội
-                  </div>
-                  <div className="text-xl font-black font-mono">
-                    {teamNum}
-                  </div>
-                  {isOccupied && (
-                    <div className="text-[9px] text-corruption-400 font-semibold mt-0.5">
-                      Đầy
-                    </div>
-                  )}
-                  {isSelected && (
-                    <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-trust-500 rounded-full border-2 border-night-900" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Optional Display Name */}
+        {/* Player Name */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-            Tên đại diện đội (tùy chọn)
+            Tên người chơi <span className="text-trust-400">*</span>
           </label>
           <input
             type="text"
-            maxLength={25}
-            placeholder="VD: Nhóm 1 - Ban Thanh Tra"
+            maxLength={40}
+            placeholder="Nhập tên của bạn"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             className="w-full px-4 py-2.5 rounded-xl bg-night-950/80 border border-night-600 focus:border-trust-400 focus:ring-1 focus:ring-trust-400/20 text-white text-sm placeholder:text-slate-600 outline-none transition-all"
+            required
           />
         </div>
 

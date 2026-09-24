@@ -1,5 +1,4 @@
 import {
-  GAME_CONFIG,
   type GamePhase,
   type AnswerQuestionPayload,
   type AnswerQuestionResult,
@@ -60,16 +59,15 @@ export class GameRuntimeService {
     const room = await RoomModel.findOne({ _id: roomId, status: "LOBBY" });
     if (!room) throw new ServiceError("INVALID_PHASE", "Room is not in the lobby phase");
 
-    const [playerCount, connectedCount, readyCount] = await Promise.all([
+    const [playerCount, connectedCount] = await Promise.all([
       PlayerModel.countDocuments({ roomId }),
       PlayerModel.countDocuments({ roomId, connected: true }),
-      TeamModel.countDocuments({ roomId, ready: true }),
     ]);
-    if (playerCount !== GAME_CONFIG.teamCount || connectedCount !== GAME_CONFIG.teamCount) {
-      throw new ServiceError("CONFLICT", "All eight players must be connected before starting");
+    if (playerCount < 2) {
+      throw new ServiceError("CONFLICT", "At least two participants are required to start the game");
     }
-    if (readyCount !== GAME_CONFIG.teamCount) {
-      throw new ServiceError("CONFLICT", "All eight teams must be ready before starting");
+    if (connectedCount !== playerCount) {
+      throw new ServiceError("CONFLICT", "All participants must be connected before starting");
     }
 
     const engine = new GameEngine();
@@ -122,11 +120,16 @@ export class GameRuntimeService {
     );
     const privateState = await this.getPrivateState(roomId, playerId);
     if (!privateState) throw new ServiceError("INTERNAL_ERROR", "Private player state is unavailable");
-    const answered = await PlayerModel.countDocuments({
-      gameId: game._id,
-      answeredRound: runtime.engine.snapshot.round,
-    });
-    if (answered === GAME_CONFIG.teamCount) await this.advanceCurrentPhase(roomId, runtime);
+    const activeTeamIds = await TeamModel.distinct("_id", { gameId: game._id, eliminated: false });
+    const [answered, activePlayers] = await Promise.all([
+      PlayerModel.countDocuments({
+        gameId: game._id,
+        teamId: { $in: activeTeamIds },
+        answeredRound: runtime.engine.snapshot.round,
+      }),
+      PlayerModel.countDocuments({ gameId: game._id, teamId: { $in: activeTeamIds } }),
+    ]);
+    if (activePlayers > 0 && answered >= activePlayers) await this.advanceCurrentPhase(roomId, runtime);
     return { correct, privateState };
   }
 

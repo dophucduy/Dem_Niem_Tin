@@ -42,15 +42,7 @@ export const HostDayResultStage: React.FC<HostDayResultStageProps> = ({
   onRestartRound,
   loading = false,
 }) => {
-  const displayClues = publicClues.length > 0 ? publicClues : [
-    {
-      id: "clue-h-1",
-      title: "Manh mối Vụ việc: Tài liệu kê khai tài sản bất thường",
-      description: "Hệ thống ghi nhận có tài liệu mật bị rò rỉ ra công luận, cho thấy có sự can thiệp và che giấu thông tin thu nhập của một cá nhân trong tổ chức.",
-      visibility: "public" as const,
-      revealedAt: Date.now(),
-    },
-  ];
+  const displayClues = publicClues;
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 py-2 animate-fade-in">
@@ -156,7 +148,7 @@ export const HostDayResultStage: React.FC<HostDayResultStageProps> = ({
 
           <div className="space-y-2 pt-1">
             <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Trạng thái 8 đội chơi:
+              Trạng thái người chơi:
             </div>
             <div className="grid grid-cols-4 gap-2">
               {teams.map((t) => (

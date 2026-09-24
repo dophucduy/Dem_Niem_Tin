@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   CLIENT_EVENTS,
   SERVER_EVENTS,
@@ -10,8 +10,7 @@ import {
   type PublicGameState,
   type ResetGameResult,
 } from "@dem-niem-tin/shared";
-import { socket, serverUrl } from "../services/socket";
-import { io as createClientSocket } from "socket.io-client";
+import { socket } from "../services/socket";
 
 const HOST_STORAGE_KEY = "dem_niem_tin_host_session";
 
@@ -30,7 +29,6 @@ export interface HostContextType {
   handleStartGame: (onSuccess?: () => void, onError?: (err: string) => void) => void;
   handleResetRoom: () => void;
   handleDestroyRoom: () => void;
-  handleSimulateFullLobby: (excludeTeam?: number) => Promise<void>;
   runGameCommand: (command: "pause" | "resume" | "skip" | "restart" | "end") => void;
   teams: any[];
 }
@@ -46,24 +44,6 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     }
   });
-
-  const emptyTeams = Array.from({ length: 8 }, (_, i) => ({
-    id: `team-${i + 1}`,
-    teamNumber: i + 1,
-    displayName: undefined,
-    connected: false,
-    ready: false,
-    eliminated: false,
-  }));
-
-  const mockLobby: LobbyState = {
-    roomId: "host-room-mock",
-    roomCode: hostSession?.roomCode || "",
-    status: "LOBBY",
-    teams: emptyTeams as any,
-    connectedCount: 0,
-    capacity: 8,
-  };
 
   const [lobby, setLobby] = useState<LobbyState | null>(null);
   const [publicState, setPublicState] = useState<PublicGameState | null>(null);
@@ -142,25 +122,6 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const botSocketsRef = useRef<any[]>([]);
-
-  const cleanupBots = () => {
-    botSocketsRef.current.forEach((bot) => {
-      try {
-        bot.disconnect();
-      } catch {
-        // ignore
-      }
-    });
-    botSocketsRef.current = [];
-  };
-
-  useEffect(() => {
-    return () => {
-      cleanupBots();
-    };
-  }, []);
-
   const handleStartGame = (onSuccess?: () => void, onError?: (err: string) => void) => {
     if (!hostSession) {
       return;
@@ -174,10 +135,10 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
         onSuccess?.();
       } else {
         let msg = res.error?.message || "Không thể bắt đầu trò chơi.";
-        if (msg.includes("All eight players must be connected")) {
-          msg = "Cần đủ 8 đội kết nối vào phòng trước khi bắt đầu trò chơi.";
-        } else if (msg.includes("All eight teams must be ready")) {
-          msg = "Cả 8 đội cần bấm xác nhận Sẵn sàng trước khi bắt đầu.";
+        if (msg.includes("At least two participants")) {
+          msg = "Cần ít nhất 2 người tham gia để bắt đầu ván chơi.";
+        } else if (msg.includes("All participants must be connected")) {
+          msg = "Hãy đợi tất cả người tham gia kết nối lại trước khi bắt đầu.";
         }
         setErrorMessage(msg);
         onError?.(msg);
@@ -187,7 +148,6 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const handleResetRoom = () => {
     if (!hostSession) return;
-    cleanupBots();
     setLoading(true);
     socket.emit(CLIENT_EVENTS.RESET_GAME, hostSession, (res: Ack<ResetGameResult>) => {
       setLoading(false);
@@ -200,7 +160,6 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const handleDestroyRoom = () => {
-    cleanupBots();
     localStorage.removeItem(HOST_STORAGE_KEY);
     setHostSession(null);
     setLobby(null);
@@ -225,56 +184,7 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (command === "end") socket.emit(CLIENT_EVENTS.END_GAME, hostSession, acknowledge);
   };
 
-  const handleSimulateFullLobby = async (excludeTeam?: number) => {
-    if (!hostSession || !lobby) return;
-    setLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const missingTeams = lobby.teams.filter(
-        (t) => !t.connected && (excludeTeam === undefined || t.teamNumber !== excludeTeam)
-      );
-      const newBots: any[] = [];
-
-      for (const team of missingTeams) {
-        await new Promise<void>((resolve) => {
-          const botSocket = createClientSocket(serverUrl, {
-            transports: ["websocket", "polling"],
-          });
-          botSocket.on("connect", () => {
-            botSocket.emit(
-              CLIENT_EVENTS.JOIN_ROOM,
-              {
-                roomCode: hostSession.roomCode,
-                teamNumber: team.teamNumber,
-                displayName: `Đội ${team.teamNumber} (Mô phỏng)`,
-              },
-              (joinRes: Ack<any>) => {
-                if (joinRes.ok) {
-                  botSocket.emit(CLIENT_EVENTS.READY, { ready: true }, () => {
-                    newBots.push(botSocket);
-                    resolve();
-                  });
-                } else {
-                  botSocket.disconnect();
-                  resolve();
-                }
-              }
-            );
-          });
-        });
-      }
-
-      botSocketsRef.current = [...botSocketsRef.current, ...newBots];
-    } catch (err: any) {
-      console.error("Failed to simulate missing teams", err);
-      setErrorMessage("Không thể kết nối tự động các đội mô phỏng.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const teams = publicState?.teams ?? lobby?.teams ?? emptyTeams;
+  const teams = publicState?.teams ?? lobby?.teams ?? [];
 
   return (
     <HostContext.Provider
@@ -288,7 +198,6 @@ export const HostProvider: React.FC<{ children: React.ReactNode }> = ({ children
         handleStartGame,
         handleResetRoom,
         handleDestroyRoom,
-        handleSimulateFullLobby,
         runGameCommand,
         teams,
       }}

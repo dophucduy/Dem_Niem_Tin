@@ -3,7 +3,7 @@ import {
   Moon, 
   HelpCircle, 
   Users, 
-  CheckCircle2, 
+  CheckCircle2,
   Clock, 
   ArrowRight, 
   Pause, 
@@ -22,7 +22,7 @@ import { GameButton } from "../common/GameButton";
 
 interface HostNightStageProps {
   round: number;
-  question: PublicQuestion;
+  question?: PublicQuestion;
   teams: PublicTeam[];
   trust: number;
   trustDelta?: number;
@@ -48,8 +48,6 @@ export const HostNightStage: React.FC<HostNightStageProps> = ({
   loading = false,
 }) => {
   const [viewMode, setViewMode] = useState<"QUESTION" | "ABILITY">("QUESTION");
-  const answeredCount = teams.filter((t) => t.ready).length;
-  const isAllAnswered = answeredCount === teams.length && teams.length > 0;
   const optionLetters = ["A", "B", "C", "D"];
 
   return (
@@ -109,9 +107,6 @@ export const HostNightStage: React.FC<HostNightStageProps> = ({
           >
             <Zap className="w-4 h-4 text-trust-400" />
             THỰC THI QUYỀN NĂNG
-            {isAllAnswered && (
-              <span className="w-2 h-2 rounded-full bg-righteous-400 animate-pulse" />
-            )}
           </button>
         </div>
 
@@ -131,26 +126,26 @@ export const HostNightStage: React.FC<HostNightStageProps> = ({
           <div className="flex items-center justify-between border-b border-night-700/80 pb-3">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-950/80 border border-indigo-600/50 text-indigo-300 text-xs font-bold uppercase tracking-wider">
               <HelpCircle className="w-4 h-4 text-indigo-400" />
-              Chủ đề: {question.category}
+              {question ? `Chủ đề: ${question.category}` : "Đang chờ câu hỏi từ máy chủ."}
             </div>
 
             <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-400">
               <Users className="w-4 h-4 text-trust-400" />
-              <span>Tiến độ nộp bài:</span>
+              <span>Người tham gia:</span>
               <span className="text-white px-2 py-0.5 rounded bg-night-900 border border-night-700">
-                {answeredCount} / {teams.length || 8} ĐỘI
+                {teams.length}
               </span>
             </div>
           </div>
 
           {/* Question Heading */}
           <h2 className="text-2xl sm:text-3xl font-black text-white leading-snug tracking-tight">
-            {question.text}
+            {question?.text ?? "Chưa có câu hỏi."}
           </h2>
 
           {/* 4 Options Grid (2x2 for Projector screen) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-            {question.options.map((option, idx) => (
+            {(question?.options ?? []).map((option, idx) => (
               <div
                 key={idx}
                 className="p-5 rounded-2xl bg-night-950/70 border border-night-700/80 flex items-start gap-4 shadow-sm"
@@ -231,18 +226,10 @@ export const HostNightStage: React.FC<HostNightStageProps> = ({
           <span className="font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
             <Users className="w-4 h-4 text-trust-400" />
             {viewMode === "QUESTION" 
-              ? "Trạng thái nộp bài câu hỏi của 8 Đội" 
-              : "Trạng thái gửi hành động đêm của 8 Đội"}
+              ? `Trạng thái người chơi (${teams.length})`
+              : `Danh sách người chơi (${teams.length})`}
           </span>
-          {isAllAnswered ? (
-            <span className="text-righteous-400 font-bold text-xs animate-badge-pop">
-              ✓ Toàn bộ 8 đội đã hoàn tất!
-            </span>
-          ) : (
-            <span className="text-slate-500 font-mono">
-              Chờ các đội hoàn tất...
-            </span>
-          )}
+          <span className="text-slate-500 font-mono">Trạng thái câu trả lời và hành động là riêng tư</span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2.5">
@@ -252,7 +239,7 @@ export const HostNightStage: React.FC<HostNightStageProps> = ({
               className={`
                 p-3 rounded-xl border text-center transition-all duration-300
                 ${
-                  team.ready
+                  team.connected
                     ? "bg-righteous-950/50 border-righteous-600/50 text-white"
                     : "bg-night-950/50 border-night-800 text-slate-500"
                 }
@@ -262,17 +249,9 @@ export const HostNightStage: React.FC<HostNightStageProps> = ({
                 ĐỘI {team.teamNumber}
               </div>
               <div className="mt-1 flex items-center justify-center gap-1 text-[10px] font-semibold">
-                {team.ready ? (
-                  <span className="text-righteous-400 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    ĐÃ NỘP
-                  </span>
-                ) : (
-                  <span className="text-slate-500 flex items-center gap-1">
-                    <Clock className="w-3 h-3 animate-spin" />
-                    ĐANG XỬ LÝ
-                  </span>
-                )}
+                <span className={team.connected ? "text-righteous-400" : "text-slate-500"}>
+                  {team.connected ? "ĐANG KẾT NỐI" : "MẤT KẾT NỐI"}
+                </span>
               </div>
             </div>
           ))}

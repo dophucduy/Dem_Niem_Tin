@@ -13,9 +13,13 @@ export function PlayerRolePage() {
 
   const [hasConfirmed, setHasConfirmed] = useState(false);
 
-  const currentRole: Role = privateState?.role || activeRole;
+  const currentRole: Role | undefined = privateState?.role || activeRole;
 
-  const currentFaction = privateState?.faction || (currentRole === "CORRUPTOR" ? "CORRUPTION" : "TRUST");
+  if (!currentRole || !privateState) {
+    return <div className="w-full max-w-md rounded-2xl border border-night-700 bg-night-900 p-5 text-center text-slate-300">Đang chờ vai trò bí mật từ máy chủ.</div>;
+  }
+
+  const currentFaction = privateState.faction;
 
   const onConfirm = () => {
     setHasConfirmed(true);

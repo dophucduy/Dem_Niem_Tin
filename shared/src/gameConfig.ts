@@ -1,7 +1,6 @@
 import type { Role } from "./types.js";
 
 export const GAME_CONFIG = {
-  teamCount: 8,
   rounds: 3,
   initialTrust: 100,
   nightDurationSeconds: 180,

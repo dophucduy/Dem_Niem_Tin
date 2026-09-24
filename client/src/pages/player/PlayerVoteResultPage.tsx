@@ -21,40 +21,13 @@ export function PlayerVoteResultPage() {
       .reverse()
       .find((ev) => ev.type === "ELIMINATION" || ev.type === "VOTE_TIE");
 
-    if (!voteEvent) {
-      const eliminatedTeam = teams.find((t) => t.eliminated);
-      if (eliminatedTeam) {
-        return {
-          round,
-          eliminatedTeamNumber: eliminatedTeam.teamNumber,
-          eliminatedTeamName: eliminatedTeam.displayName,
-          votesReceived: 3,
-          faction: "CORRUPTION" as const,
-          trustDelta: 10,
-          isTie: false,
-          voteDistribution: teams.map((t) => ({
-            teamNumber: t.teamNumber,
-            teamName: t.displayName,
-            votes: t.teamNumber === eliminatedTeam.teamNumber ? 3 : 0,
-          })),
-        };
-      }
-      return undefined;
-    }
+    if (!voteEvent) return undefined;
 
     try {
       const parsed = JSON.parse(voteEvent.message);
       return parsed;
     } catch {
-      return {
-        round,
-        isTie: voteEvent.type === "VOTE_TIE",
-        eliminatedTeamNumber: 3,
-        eliminatedTeamName: "Đội 3",
-        votesReceived: 4,
-        faction: "CORRUPTION" as const,
-        trustDelta: 10,
-      };
+      return undefined;
     }
   }, [publicState?.publicEvents, teams, round]);
 
