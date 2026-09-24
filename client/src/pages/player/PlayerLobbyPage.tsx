@@ -38,18 +38,20 @@ export function PlayerLobbyPage() {
         loading={loading}
       />
 
-      {/* Button to proceed to role reveal in test/demo mode */}
-      <div className="pt-2">
-        <GameButton
-          variant="outline"
-          size="md"
-          fullWidth
-          icon={<Shield className="w-4 h-4 text-trust-300" />}
-          onClick={() => navigate("/player/role")}
-        >
-          TIẾN VÀO NHẬN VAI TRÒ (P-03)
-        </GameButton>
-      </div>
+      {/* Button to proceed to role reveal in test/demo mode only */}
+      {!session && (
+        <div className="pt-2">
+          <GameButton
+            variant="outline"
+            size="md"
+            fullWidth
+            icon={<Shield className="w-4 h-4 text-trust-300" />}
+            onClick={() => navigate("/player/role")}
+          >
+            TIẾN VÀO NHẬN VAI TRÒ (P-03 - DEMO)
+          </GameButton>
+        </div>
+      )}
     </div>
   );
 }

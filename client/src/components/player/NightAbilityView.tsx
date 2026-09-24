@@ -31,7 +31,8 @@ interface NightAbilityViewProps {
   effectiveState: EffectiveState;
   myTeamNumber: number;
   teams?: TeamOption[];
-  onExecuteAbility: (targetTeamNumber: number, extraData?: string) => void;
+  onExecuteAbility: (targetTeamNumber?: number, extraData?: string) => void;
+  onProceedToResult?: () => void;
   isSubmitted?: boolean;
   loading?: boolean;
 }
@@ -42,6 +43,7 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
   myTeamNumber,
   teams = Array.from({ length: 8 }, (_, i) => ({ teamNumber: i + 1, eliminated: false })),
   onExecuteAbility,
+  onProceedToResult,
   isSubmitted = false,
   loading = false,
 }) => {
@@ -52,6 +54,7 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
   const roleInfo = ROLE_DEFINITIONS[role];
   const isCitizen = effectiveState === "CITIZEN";
   const isCorruption = role === "CORRUPTOR";
+  const requiresTarget = role === "INSPECTOR" || role === "LAW" || role === "CORRUPTOR" || role === "SPECIAL_6";
 
   const renderRoleIcon = (className: string) => {
     switch (roleInfo?.iconName) {
@@ -74,10 +77,10 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
   };
 
   const handleConfirmAction = () => {
-    if (selectedTarget === null) return;
+    if (requiresTarget && selectedTarget === null) return;
     setShowConfirmModal(false);
     setHasSubmittedLocally(true);
-    onExecuteAbility(selectedTarget);
+    onExecuteAbility(selectedTarget !== null ? selectedTarget : undefined);
   };
 
   // =========================================================================
@@ -122,6 +125,19 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
             <Clock className="w-4 h-4 text-indigo-400 animate-spin" />
             Đang chờ các đội khác hoàn thành hành động đêm...
           </div>
+
+          {onProceedToResult && (
+            <div className="pt-2">
+              <GameButton
+                variant="outline"
+                size="md"
+                fullWidth
+                onClick={onProceedToResult}
+              >
+                TIẾN ĐẾN KẾT QUẢ RIÊNG TƯ (P-07)
+              </GameButton>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -146,8 +162,12 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
               HÀNH ĐỘNG ĐÃ GỬI ĐẾN MÁY CHỦ
             </h2>
             <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed pt-1">
-              Bạn đã chọn thi hành <strong className="text-white">{roleInfo?.abilityName}</strong> lên{" "}
-              <strong className="text-trust-400">ĐỘI {selectedTarget}</strong>.
+              Bạn đã chọn thi hành <strong className="text-white">{roleInfo?.abilityName}</strong>
+              {selectedTarget !== null ? (
+                <> lên <strong className="text-trust-400">ĐỘI {selectedTarget}</strong>.</>
+              ) : (
+                <> thành công.</>
+              )}
             </p>
           </div>
 
@@ -162,6 +182,19 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
             <Clock className="w-4 h-4 text-trust-400 animate-spin" />
             Đang chờ kết thúc đêm để nhận kết quả mật...
           </div>
+
+          {onProceedToResult && (
+            <div className="pt-2">
+              <GameButton
+                variant="outline"
+                size="md"
+                fullWidth
+                onClick={onProceedToResult}
+              >
+                TIẾN ĐẾN KẾT QUẢ RIÊNG TƯ (P-07)
+              </GameButton>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -277,12 +310,12 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
           variant={isCorruption ? "danger" : "primary"}
           size="lg"
           fullWidth
-          disabled={selectedTarget === null || loading}
+          disabled={(requiresTarget && selectedTarget === null) || loading}
           loading={loading}
           onClick={() => setShowConfirmModal(true)}
           icon={<Zap className="w-5 h-5" />}
         >
-          XÁC NHẬN THỰC THI NĂNG LỰC
+          {requiresTarget ? "XÁC NHẬN THỰC THI NĂNG LỰC" : `KÍCH HOẠT: ${roleInfo?.abilityName || "NĂNG LỰC"}`}
         </GameButton>
 
         <div className="text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
@@ -292,7 +325,7 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
       </div>
 
       {/* Confirmation Modal */}
-      {showConfirmModal && selectedTarget !== null && (
+      {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
           <div className="glass-panel-elevated rounded-3xl p-6 sm:p-7 max-w-sm w-full border border-trust-500/50 space-y-4 text-center">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-950/80 border border-amber-500/50 flex items-center justify-center text-amber-400">
@@ -302,8 +335,12 @@ export const NightAbilityView: React.FC<NightAbilityViewProps> = ({
             <div className="space-y-1">
               <h4 className="text-lg font-black text-white">Xác nhận thực thi</h4>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Bạn có chắc chắn muốn thi hành <strong className="text-trust-400">{roleInfo?.abilityName}</strong> lên{" "}
-                <strong className="text-white font-mono">ĐỘI {selectedTarget}</strong>?
+                Bạn có chắc chắn muốn thi hành <strong className="text-trust-400">{roleInfo?.abilityName}</strong>
+                {selectedTarget !== null ? (
+                  <> lên <strong className="text-white font-mono">ĐỘI {selectedTarget}</strong>?</>
+                ) : (
+                  <> ngay bây giờ?</>
+                )}
               </p>
             </div>
 
