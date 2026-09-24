@@ -80,18 +80,30 @@ export function PlayerRolePage() {
         isReady={hasConfirmed}
       />
 
-      {/* Manual button to proceed to Night in test/demo mode */}
-      <div className="pt-1">
-        <GameButton
-          variant="outline"
-          size="sm"
-          fullWidth
-          icon={<Moon className="w-4 h-4 text-trust-300" />}
-          onClick={() => navigate("/player/night/question")}
-        >
-          TIẾN VÀO THỬ THÁCH TRI THỨC (P-04)
-        </GameButton>
-      </div>
+      {/* Manual button to proceed to Night in test/demo mode only */}
+      {!session ? (
+        <div className="pt-1">
+          <GameButton
+            variant="outline"
+            size="sm"
+            fullWidth
+            icon={<Moon className="w-4 h-4 text-trust-300" />}
+            onClick={() => navigate("/player/night/question")}
+          >
+            TIẾN VÀO THỬ THÁCH TRI THỨC (P-04 - DEMO)
+          </GameButton>
+        </div>
+      ) : hasConfirmed && (
+        <div className="p-3 rounded-2xl bg-night-950/80 border border-trust-500/40 text-center space-y-1">
+          <div className="text-xs font-bold text-trust-300 flex items-center justify-center gap-1.5 font-mono">
+            <span className="w-2 h-2 rounded-full bg-trust-400 animate-ping" />
+            ĐÃ SẴN SÀNG • CHỜ GIẢNG VIÊN MỞ ĐÊM
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Giữ bí mật vai trò và chú ý quan sát màn chiếu của giảng viên.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

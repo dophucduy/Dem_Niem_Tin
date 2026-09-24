@@ -1,28 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHostGame } from "../../context/HostContext";
-import { HostNightStage } from "../../components/host/HostNightStage";
-import { SAMPLE_QUESTIONS } from "../../data/sampleQuestions";
+import { HostVotingStage } from "../../components/host/HostVotingStage";
 
-export function HostNightPage() {
+export function HostVotingPage() {
   const navigate = useNavigate();
   const { publicState, teams, loading, runGameCommand } = useHostGame();
 
   const [localPaused, setLocalPaused] = useState(false);
-  const [localEndsAt] = useState(() => Date.now() + 180 * 1000);
+  const [localEndsAt] = useState(() => Date.now() + 45 * 1000);
 
-  const question = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
   const round = publicState?.round || 1;
-  const trust = publicState?.trust || 100;
+  const trust = publicState?.trust ?? 100;
   const paused = publicState?.paused ?? localPaused;
   const phaseEndsAt = publicState?.phaseEndsAt ?? localEndsAt;
-
-  // Auto-navigate to day result when server phase transitions to DAY
-  useEffect(() => {
-    if (publicState && publicState.phase === "DAY") {
-      navigate("/host/day-result");
-    }
-  }, [publicState?.phase, navigate]);
 
   const handlePauseToggle = () => {
     if (publicState) {
@@ -32,26 +23,25 @@ export function HostNightPage() {
     }
   };
 
-  const handleSkip = () => {
+  const handleSkipTimer = () => {
     runGameCommand("skip");
+    // In Feature 8, this will navigate to /host/vote-result
   };
 
-  const handleResolveNight = () => {
-    runGameCommand("skip");
-    navigate("/host/day-result");
+  const handleRestart = () => {
+    runGameCommand("restart");
   };
 
   return (
-    <HostNightStage
+    <HostVotingStage
       round={round}
-      question={question}
-      teams={teams}
       trust={trust}
       phaseEndsAt={phaseEndsAt}
       paused={paused}
+      teams={teams}
       onPauseToggle={handlePauseToggle}
-      onSkipTimer={handleSkip}
-      onResolveNight={handleResolveNight}
+      onSkipTimer={handleSkipTimer}
+      onRestartRound={handleRestart}
       loading={loading}
     />
   );

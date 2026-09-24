@@ -40,7 +40,16 @@ export interface PlayerContextType {
   handleConfirmReady: () => void;
   handleToggleReady: (ready?: boolean) => void;
   handleSubmitAnswer: (selectedOption: number, onResult?: (correct: boolean) => void) => void;
-  handleExecuteAbility: (targetTeamNumber: number) => void;
+  handleExecuteAbility: (
+    targetTeamNumber?: number,
+    onSuccess?: () => void,
+    onError?: (err: string) => void
+  ) => void;
+  handleSubmitVote: (
+    targetTeamNumber: number,
+    onSuccess?: () => void,
+    onError?: (err: string) => void
+  ) => void;
   activeRole: Role;
   setActiveRole: (role: Role) => void;
   activeFaction: Faction;
@@ -269,18 +278,82 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const handleExecuteAbility = (targetTeamNumber: number) => {
+  const handleExecuteAbility = (
+    targetTeamNumber?: number,
+    onSuccess?: () => void,
+    onError?: (err: string) => void
+  ) => {
+    setLoading(true);
+    setErrorMessage(null);
+
+    let targetTeamId: string | undefined = undefined;
+    if (targetTeamNumber !== undefined) {
+      const allTeams = publicState?.teams || lobby?.teams || [];
+      const targetTeam = allTeams.find((t: { teamNumber: number; id: string }) => t.teamNumber === targetTeamNumber);
+      targetTeamId = targetTeam?.id;
+    }
+
     if (socket.connected && session) {
-      const targetTeam = (publicState?.teams || lobby?.teams || emptyTeams).find((t: { teamNumber: number; id: string }) => t.teamNumber === targetTeamNumber);
       socket.emit(
         CLIENT_EVENTS.USE_ABILITY,
         {
-          targetTeamId: targetTeam?.id || `team-${targetTeamNumber}`,
+          targetTeamId,
         },
         (res: Ack<PlayerActionResult>) => {
-          if (!res.ok) setErrorMessage(res.error.message);
+          setLoading(false);
+          if (res.ok) {
+            onSuccess?.();
+          } else {
+            const msg = res.error?.message || "Không thể thực thi quyền năng lúc này.";
+            setErrorMessage(msg);
+            onError?.(msg);
+          }
         }
       );
+    } else {
+      setLoading(false);
+      onSuccess?.();
+    }
+  };
+
+  const handleSubmitVote = (
+    targetTeamNumber: number,
+    onSuccess?: () => void,
+    onError?: (err: string) => void
+  ) => {
+    setLoading(true);
+    setErrorMessage(null);
+
+    const allTeams = publicState?.teams || lobby?.teams || [];
+    const targetTeam = allTeams.find((t: { teamNumber: number; id: string }) => t.teamNumber === targetTeamNumber);
+    const targetTeamId = targetTeam?.id;
+
+    if (!targetTeamId && socket.connected) {
+      const msg = "Không tìm thấy thông tin định danh của đội được chọn.";
+      setLoading(false);
+      setErrorMessage(msg);
+      onError?.(msg);
+      return;
+    }
+
+    if (socket.connected && session) {
+      socket.emit(
+        CLIENT_EVENTS.SUBMIT_VOTE,
+        { targetTeamId: targetTeamId! },
+        (res: Ack<PlayerActionResult>) => {
+          setLoading(false);
+          if (res.ok) {
+            onSuccess?.();
+          } else {
+            const msg = res.error?.message || "Không thể nộp phiếu biểu quyết lúc này.";
+            setErrorMessage(msg);
+            onError?.(msg);
+          }
+        }
+      );
+    } else {
+      setLoading(false);
+      onSuccess?.();
     }
   };
 
@@ -305,6 +378,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         handleToggleReady,
         handleSubmitAnswer,
         handleExecuteAbility,
+        handleSubmitVote,
         activeRole,
         setActiveRole,
         activeFaction,

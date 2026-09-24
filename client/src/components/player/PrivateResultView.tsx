@@ -27,23 +27,71 @@ interface PrivateResultViewProps {
 export const PrivateResultView: React.FC<PrivateResultViewProps> = ({
   role,
   myTeamNumber,
-  targetTeamNumber = 5,
+  targetTeamNumber,
   result,
   roundNumber = 1,
   onAcknowledge,
 }) => {
   const roleInfo = ROLE_DEFINITIONS[role];
 
-  // Detect whether result indicates suspicion/danger or integrity/success
-  const isSuspicious = 
-    result.message.toLowerCase().includes("đáng ngờ") || 
-    result.message.toLowerCase().includes("tư lợi") ||
-    result.message.toLowerCase().includes("sai lệch");
+  // Helper to interpret and format raw server messages
+  const formatServerMessage = (raw: string, type: string) => {
+    if (type === "INSPECTION_RESULT" || raw.toLowerCase().includes("target role is")) {
+      const match = raw.match(/target role is (\w+)/i);
+      const roleFound = match ? match[1].toUpperCase() : "";
+      if (roleFound === "CORRUPTOR") {
+        return {
+          title: "CÓ DẤU HIỆU ĐÁNG NGỜ",
+          desc: "Phát hiện mục tiêu mang vai trò NGƯỜI VỤ LỢI. Hãy giữ bí mật và dẫn dắt lập luận trong phiên thảo luận!",
+          isSuspicious: true,
+          isSafe: false,
+        };
+      } else {
+        const foundRoleName = ROLE_DEFINITIONS[roleFound as Role]?.name || roleFound || "Đồng minh";
+        return {
+          title: "CHƯA PHÁT HIỆN TIÊU CỰC",
+          desc: `Đối tượng mang vai trò ${foundRoleName} — thuộc phe Bảo vệ Niềm tin. Tạm thời an toàn.`,
+          isSuspicious: false,
+          isSafe: true,
+        };
+      }
+    }
+    if (raw.toLowerCase().includes("your target was protected") || type === "ACTION_FAILED") {
+      return {
+        title: "BỊ PHÁP LUẬT VÔ HIỆU HÓA",
+        desc: "Mục tiêu đã được lá chắn Pháp luật che chở kịp thời. Hành vi can thiệp bị chặn đứng hoàn toàn!",
+        isSuspicious: false,
+        isSafe: true,
+      };
+    }
+    if (raw.toLowerCase().includes("successfully targeted") || type === "ACTION_SUCCESS") {
+      return {
+        title: "CAN THIỆP THÀNH CÔNG",
+        desc: "Hành động bí mật đã được thực thi thành công vào ban đêm theo đúng dự tính.",
+        isSuspicious: true,
+        isSafe: false,
+      };
+    }
+    const isSusp = 
+      raw.toLowerCase().includes("đáng ngờ") || 
+      raw.toLowerCase().includes("tư lợi") ||
+      raw.toLowerCase().includes("sai lệch");
+    const isS = 
+      raw.toLowerCase().includes("chưa phát hiện") || 
+      raw.toLowerCase().includes("bảo vệ") ||
+      raw.toLowerCase().includes("hợp lệ") ||
+      raw.toLowerCase().includes("an toàn");
+    return {
+      title: isSusp ? "CÓ DẤU HIỆU ĐÁNG NGỜ" : (isS ? "CHƯA PHÁT HIỆN DẤU HIỆU" : "GHI NHẬN HỒ SƠ"),
+      desc: raw,
+      isSuspicious: isSusp,
+      isSafe: isS,
+    };
+  };
 
-  const isSafe = 
-    result.message.toLowerCase().includes("chưa phát hiện") || 
-    result.message.toLowerCase().includes("bảo vệ") ||
-    result.message.toLowerCase().includes("hợp lệ");
+  const parsed = formatServerMessage(result.message, result.type);
+  const isSuspicious = parsed.isSuspicious;
+  const isSafe = parsed.isSafe;
 
   return (
     <div className="w-full max-w-md mx-auto space-y-5 animate-badge-pop">
@@ -78,11 +126,11 @@ export const PrivateResultView: React.FC<PrivateResultViewProps> = ({
         {/* Target Info */}
         <div className="p-3.5 rounded-2xl bg-night-950/80 border border-night-700 flex items-center justify-between">
           <div className="text-xs text-slate-400 font-medium">
-            Đối tượng thụ lý:
+            {targetTeamNumber !== undefined ? "Đối tượng thụ lý:" : "Phạm vi áp dụng:"}
           </div>
           <div className="text-base font-black text-white font-mono flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-trust-400" />
-            ĐỘI {targetTeamNumber}
+            {targetTeamNumber !== undefined ? `ĐỘI ${targetTeamNumber}` : "HỒ SƠ TOÀN LỚP"}
           </div>
         </div>
 
@@ -112,7 +160,7 @@ export const PrivateResultView: React.FC<PrivateResultViewProps> = ({
           </div>
 
           <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
-            Kết luận điều tra
+            Kết luận nghiệp vụ
           </div>
 
           <div
@@ -124,8 +172,12 @@ export const PrivateResultView: React.FC<PrivateResultViewProps> = ({
                 : "text-justice-300"
             }`}
           >
-            {result.message}
+            {parsed.title}
           </div>
+
+          <p className="text-xs text-slate-200 leading-relaxed max-w-xs mx-auto pt-1 font-medium">
+            {parsed.desc}
+          </p>
         </div>
 
         {/* Tactical Advice for Classroom Gameplay */}
@@ -165,7 +217,7 @@ export const PrivateResultView: React.FC<PrivateResultViewProps> = ({
           onClick={onAcknowledge}
           icon={<ArrowRight className="w-5 h-5" />}
         >
-          TÔI ĐÃ GHI NHẬN & GIỮ BÍ MẬT
+          TIẾP TỤC ĐẾN BÁO CÁO BAN NGÀY (P-08)
         </GameButton>
       </div>
     </div>
