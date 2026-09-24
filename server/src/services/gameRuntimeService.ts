@@ -346,9 +346,9 @@ export class GameRuntimeService {
       round: state.round,
       trust: state.trust,
       paused: state.paused,
-      phaseStartedAt: state.phaseStartedAt === undefined ? undefined : new Date(state.phaseStartedAt),
-      phaseEndsAt: state.phaseEndsAt === undefined ? undefined : new Date(state.phaseEndsAt),
-      pausedRemainingMs: state.pausedRemainingMs,
+      phaseStartedAt: state.phaseStartedAt === undefined ? null : new Date(state.phaseStartedAt),
+      phaseEndsAt: state.phaseEndsAt === undefined ? null : new Date(state.phaseEndsAt),
+      pausedRemainingMs: state.pausedRemainingMs ?? null,
       revision: state.revision,
     };
   }

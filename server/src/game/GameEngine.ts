@@ -25,7 +25,15 @@ export class GameEngine {
     private readonly config: EngineConfig = DEFAULT_ENGINE_CONFIG,
     initialState?: GameState,
   ) {
-    this.state = initialState ? { ...initialState } : this.initialState();
+    if (initialState) {
+      this.state = { ...initialState };
+      if (this.config.phaseDurationMs[this.state.phase] === null) {
+        this.state.phaseEndsAt = undefined;
+        this.state.pausedRemainingMs = undefined;
+      }
+    } else {
+      this.state = this.initialState();
+    }
   }
 
   get snapshot(): GameStateSnapshot {
