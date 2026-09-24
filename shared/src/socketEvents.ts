@@ -39,6 +39,7 @@ export const CLIENT_EVENTS = {
   RESTART_ROUND: "host:restart-round",
   RESET_GAME: "host:reset-game",
   END_GAME: "host:end-game",
+  DESTROY_ROOM: "host:destroy-room",
 } as const;
 
 export const SERVER_EVENTS = {
@@ -48,6 +49,7 @@ export const SERVER_EVENTS = {
   PRIVATE_STATE_UPDATED: "game:private-state",
   SESSION_REPLACED: "session:replaced",
   VALIDATION_ERROR: "error:validation",
+  ROOM_CLOSED: "room:closed",
 } as const;
 
 export type ConnectionReadyPayload = {
@@ -118,6 +120,10 @@ export interface ClientToServerEvents {
     payload: HostAuthPayload,
     acknowledge: (response: Ack<HostGameCommandResult>) => void,
   ) => void;
+  [CLIENT_EVENTS.DESTROY_ROOM]: (
+    payload: HostAuthPayload,
+    acknowledge: (response: Ack<{ closed: boolean }>) => void,
+  ) => void;
 }
 
 export interface ServerToClientEvents {
@@ -127,4 +133,5 @@ export interface ServerToClientEvents {
   [SERVER_EVENTS.PRIVATE_STATE_UPDATED]: (payload: PrivatePlayerState) => void;
   [SERVER_EVENTS.SESSION_REPLACED]: (payload: { message: string }) => void;
   [SERVER_EVENTS.VALIDATION_ERROR]: (payload: { message: string }) => void;
+  [SERVER_EVENTS.ROOM_CLOSED]: (payload: { message?: string }) => void;
 }
