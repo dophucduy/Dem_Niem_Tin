@@ -20,6 +20,8 @@ export async function submitAbility(
     .select("+effectiveState +abilityUnlocked")
     .lean();
   if (!player) throw new ServiceError("UNAUTHORIZED", "Player is not part of this game");
+  const activeTeam = await TeamModel.exists({ _id: player.teamId, gameId, eliminated: false });
+  if (!activeTeam) throw new ServiceError("FORBIDDEN", "Eliminated players cannot use abilities");
   if (player.effectiveState !== "SPECIAL" || !player.abilityUnlocked) {
     throw new ServiceError("FORBIDDEN", "Ability is not unlocked");
   }

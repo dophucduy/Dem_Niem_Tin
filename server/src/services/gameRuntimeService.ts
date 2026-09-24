@@ -129,7 +129,7 @@ export class GameRuntimeService {
       }),
       PlayerModel.countDocuments({ gameId: game._id, teamId: { $in: activeTeamIds } }),
     ]);
-    if (activePlayers > 0 && answered >= activePlayers) await this.advanceCurrentPhase(roomId, runtime);
+    if (activePlayers > 0 && answered >= activePlayers) await this.advanceCurrentPhase(roomId, runtime, "NIGHT_KNOWLEDGE");
     return { correct, privateState };
   }
 
@@ -146,8 +146,9 @@ export class GameRuntimeService {
     if (!game) throw new ServiceError("INVALID_PHASE", "Active game was not found");
     await submitVote(game._id.toString(), runtime.engine.snapshot.round, playerId, payload.targetTeamId);
     const votes = await VoteModel.countDocuments({ gameId: game._id, round: runtime.engine.snapshot.round });
-    const activePlayers = await TeamModel.countDocuments({ gameId: game._id, eliminated: false });
-    if (votes === activePlayers) await this.advanceCurrentPhase(roomId, runtime);
+    const activeTeamIds = await TeamModel.distinct("_id", { gameId: game._id, eliminated: false });
+    const activePlayers = await PlayerModel.countDocuments({ gameId: game._id, teamId: { $in: activeTeamIds } });
+    if (activePlayers > 0 && votes >= activePlayers) await this.advanceCurrentPhase(roomId, runtime, "VOTING");
   }
 
   async reconnectHost(roomId: string): Promise<PublicGameState | undefined> {
@@ -263,13 +264,17 @@ export class GameRuntimeService {
 
   private async requireRuntimePhase(roomId: string, phase: GamePhase): Promise<Runtime> {
     const runtime = await this.requireRuntime(roomId);
+    if (runtime.engine.snapshot.paused) {
+      throw new ServiceError("INVALID_PHASE", "Game is paused; player actions are temporarily disabled");
+    }
     if (runtime.engine.snapshot.phase !== phase) {
       throw new ServiceError("INVALID_PHASE", `Action is only allowed during ${phase}`);
     }
     return runtime;
   }
 
-  private async advanceCurrentPhase(roomId: string, runtime: Runtime): Promise<void> {
+  private async advanceCurrentPhase(roomId: string, runtime: Runtime, expectedPhase: GamePhase): Promise<void> {
+    if (runtime.engine.snapshot.phase !== expectedPhase) return;
     runtime.scheduler.cancel();
     runtime.engine.advance();
     await this.preparePhase(roomId, runtime.engine);
@@ -298,8 +303,8 @@ export class GameRuntimeService {
       if (trustDelta) engine.updateTrust(trustDelta);
     }
     if (state.phase === "VOTE_RESULT") {
-      const trustDelta = await tallyVotes(game._id.toString(), state.round);
-      if (trustDelta) engine.updateTrust(trustDelta);
+      const result = await tallyVotes(game._id.toString(), state.round);
+      if (result.trustDelta) engine.updateTrust(result.trustDelta);
     }
   }
 
