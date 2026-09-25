@@ -178,8 +178,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         CLIENT_EVENTS.JOIN_ROOM,
         {
           roomCode: cleanRoomCode,
-          teamNumber,
-          displayName: displayName?.trim() || undefined,
+          displayName: displayName?.trim() || "",
         },
         (res: Ack<any>) => {
           setLoading(false);
