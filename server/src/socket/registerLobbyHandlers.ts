@@ -115,6 +115,8 @@ export function registerLobbyHandlers(
           room: reconnected.lobby,
           playerId: reconnected.playerId,
           teamId: reconnected.teamId,
+          // Echo the participant number so clients can repair stale local sessions.
+          teamNumber: reconnected.teamNumber,
           privateState,
           publicState,
         },

@@ -119,7 +119,7 @@ export function PlayerPage() {
     };
   }, [session]);
 
-  const handleJoin = (roomCode: string, teamNumber: number, displayName?: string) => {
+  const handleJoin = (roomCode: string, displayName?: string) => {
     setLoading(true);
     setErrorMessage(null);
 
@@ -152,12 +152,14 @@ export function PlayerPage() {
     // Development/UI preview fallback
     setTimeout(() => {
       if (!lobby && loading) {
+        // Preview fallback only; a real join always takes the server-assigned number.
+        const previewTeamNumber = 1;
         const mockTeams = Array.from({ length: 8 }, (_, i) => ({
           id: `team-${i + 1}`,
           teamNumber: i + 1,
-          displayName: i + 1 === teamNumber ? displayName || `Đội ${i + 1}` : undefined,
-          connected: i + 1 === teamNumber || i === 0 || i === 1,
-          ready: i + 1 === teamNumber,
+          displayName: i + 1 === previewTeamNumber ? displayName || `Đội ${i + 1}` : undefined,
+          connected: i + 1 === previewTeamNumber || i === 0 || i === 1,
+          ready: i + 1 === previewTeamNumber,
           eliminated: false,
         }));
 
@@ -173,9 +175,9 @@ export function PlayerPage() {
         const mockSession: StoredSession = {
           roomCode: roomCode.toUpperCase(),
           sessionToken: "mock-token-abc",
-          teamNumber,
+          teamNumber: previewTeamNumber,
           playerId: "mock-player-id",
-          teamId: `team-${teamNumber}`,
+          teamId: `team-${previewTeamNumber}`,
         };
 
         setLoading(false);
@@ -290,7 +292,7 @@ export function PlayerPage() {
             initialRoomCode={codeFromUrl}
             loading={loading}
             errorMessage={errorMessage}
-            onJoin={(roomCode, displayName) => handleJoin(roomCode, 1, displayName)}
+            onJoin={(roomCode, displayName) => handleJoin(roomCode, displayName)}
           />
         )}
 

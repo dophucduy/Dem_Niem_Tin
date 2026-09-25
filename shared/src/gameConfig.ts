@@ -1,6 +1,8 @@
 import type { ClueVisibility, Role } from "./types.js";
 
 export const GAME_CONFIG = {
+  /** Eight teams per room: one device per team, seats are assigned in join order. */
+  teamCount: 8,
   rounds: 3,
   initialTrust: 100,
   nightDurationSeconds: 180,

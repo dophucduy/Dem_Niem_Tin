@@ -39,7 +39,7 @@ export interface PlayerContextType {
   loading: boolean;
   errorMessage: string | null;
   setErrorMessage: (msg: string | null) => void;
-  handleJoin: (roomCode: string, teamNumber: number, displayName?: string, onSuccess?: () => void) => void;
+  handleJoin: (roomCode: string, displayName?: string, onSuccess?: () => void) => void;
   handleLeaveRoom: () => void;
   handleConfirmReady: () => void;
   handleToggleReady: (ready?: boolean) => void;
@@ -130,6 +130,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 if (res.data.privateState.role) setActiveRole(res.data.privateState.role);
               }
               if (res.data.publicState) setPublicState(res.data.publicState);
+              // Repair stale local sessions (older builds stored teamNumber 0) with the
+              // server-assigned participant number.
+              if (typeof res.data.teamNumber === "number" && res.data.teamNumber !== session.teamNumber) {
+                const repairedSession = { ...session, teamNumber: res.data.teamNumber };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(repairedSession));
+                setSession(repairedSession);
+              }
             } else {
               localStorage.removeItem(STORAGE_KEY);
               setSession(null);
@@ -164,7 +171,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const handleJoin = (
     roomCode: string,
-    teamNumber: number,
     displayName?: string,
     onSuccess?: () => void
   ) => {
@@ -186,7 +192,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const newSession: StoredSession = {
               roomCode: cleanRoomCode,
               sessionToken: res.data.sessionToken,
-              teamNumber,
+              // The participant number is assigned by the server per join, never by the client.
+              teamNumber: res.data.teamNumber,
               playerId: res.data.playerId,
               teamId: res.data.teamId,
             };

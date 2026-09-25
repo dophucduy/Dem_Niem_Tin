@@ -13,6 +13,11 @@ export async function submitVote(gameId: string, round: number, voterId: string,
   const voterTeam = voter.teamId ? await TeamModel.findOne({ _id: voter.teamId, gameId }).lean() : null;
   if (voterTeam?.eliminated) throw new ServiceError("FORBIDDEN", "Eliminated teams cannot vote");
 
+  // A team can never vote for itself; the ballot UI blocks this, but the server must not trust clients.
+  if (voter.teamId && voter.teamId.toString() === targetTeamId) {
+    throw new ServiceError("VALIDATION_ERROR", "A team cannot vote for its own team");
+  }
+
   const [target, targetTeam] = await Promise.all([
     PlayerModel.findOne({ gameId, teamId: targetTeamId }).lean(),
     TeamModel.findOne({ _id: targetTeamId, gameId, eliminated: false }).lean(),

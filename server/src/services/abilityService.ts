@@ -27,6 +27,13 @@ export const TARGET_REQUIRED_ROLES: readonly Role[] = [
   "SPECIAL_7",
 ];
 
+/**
+ * Roles allowed to aim their nightly ability at their own team: LAW shields itself
+ * (bảo vệ) and CORRUPTOR seeds noise on itself (gieo nhiễu). Every other targeted
+ * role must act on a rival team.
+ */
+export const SELF_TARGET_ALLOWED_ROLES: readonly Role[] = ["LAW", "CORRUPTOR"];
+
 const ABILITY_MODES: readonly AbilityMode[] = ["TRUST_DRAIN", "INTERFERE"];
 
 export async function submitAbility(
@@ -61,6 +68,17 @@ export async function submitAbility(
 
   // WHISTLEBLOWER leaks a case file and ignores any stray target.
   const requestedTargetTeamId = role === "WHISTLEBLOWER" ? undefined : targetTeamId;
+
+  // A team can never act on itself unless its role explicitly allows it (LAW/CORRUPTOR).
+  if (
+    role &&
+    requestedTargetTeamId &&
+    player.teamId &&
+    requestedTargetTeamId === player.teamId.toString() &&
+    !SELF_TARGET_ALLOWED_ROLES.includes(role)
+  ) {
+    throw new ServiceError("VALIDATION_ERROR", `Role ${role} cannot target its own team`);
+  }
 
   let targetPlayerId: Types.ObjectId | undefined;
   if (requestedTargetTeamId) {

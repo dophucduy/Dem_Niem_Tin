@@ -93,9 +93,11 @@ describeDatabase("Host Socket.IO integration", () => {
       players.push(player);
       const joined = await emitAck<any>(player, "room:join", {
         roomCode: hostAuth.roomCode,
-        teamNumber,
+        displayName: `Đội ${teamNumber}`,
       });
       expect(joined.ok).toBe(true);
+      // The server assigns seats in join order; the client no longer sends a team number.
+      expect(joined.data.teamNumber).toBe(teamNumber);
       joinedPlayers.push(joined.data);
       privateStatePromises.push(new Promise((resolve) => player.once("game:private-state", resolve)));
       const ready = await emitAck<any>(player, "player:ready", { ready: true });
@@ -111,7 +113,8 @@ describeDatabase("Host Socket.IO integration", () => {
       ok: true,
       data: { publicState: { phase: "LOBBY", round: 0, trust: 100 } },
     });
-    expect(JSON.stringify(started.data.publicState)).not.toMatch(/role|faction|sessionToken/i);
+    // ROLE_REVEAL is a legitimate public phase name; only the secret fields must be absent.
+    expect(JSON.stringify(started.data.publicState)).not.toMatch(/"role"|"faction"|"sessionToken"/i);
     expect(hostReceivedPrivateState).toBe(false);
     expect(privateStates).toHaveLength(8);
     expect(privateStates.map((state) => state.playerId).sort()).toEqual(

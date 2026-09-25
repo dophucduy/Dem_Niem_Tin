@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { ServiceError } from "../src/services/errors.js";
 import { RoomService } from "../src/services/roomService.js";
 
 const runDatabaseTests = process.env.RUN_DB_INTEGRATION === "true";
@@ -23,36 +22,38 @@ describeDatabase("RoomService integration", () => {
     await mongoose.disconnect();
   });
 
-  it("creates eight teams and rejects duplicate team claims", async () => {
+  it("assigns seat numbers in join order and exposes the eight-team capacity", async () => {
     const created = await roomService.createRoom("Host");
-    expect(created.lobby.teams).toHaveLength(8);
+    expect(created.lobby.teams).toHaveLength(0);
+    expect(created.lobby.capacity).toBe(8);
 
-    await roomService.joinRoom({ roomCode: created.roomCode, teamNumber: 1, socketId: "socket-1" });
-    await expect(
-      roomService.joinRoom({ roomCode: created.roomCode, teamNumber: 1, socketId: "socket-2" }),
-    ).rejects.toMatchObject<ServiceError>({ code: "TEAM_UNAVAILABLE" });
+    const first = await roomService.joinRoom({ roomCode: created.roomCode, displayName: "Đội 1", socketId: "socket-1" });
+    expect(first.teamNumber).toBe(1);
+    const second = await roomService.joinRoom({ roomCode: created.roomCode, displayName: "Đội 2", socketId: "socket-2" });
+    expect(second.teamNumber).toBe(2);
+    expect(second.lobby.teams.map((team) => team.teamNumber)).toEqual([1, 2]);
   });
 
-  it("rejects a ninth player when all teams are occupied", async () => {
+  it("gives all eight teams their own seat number", async () => {
     const created = await roomService.createRoom("Host");
-    for (let teamNumber = 1; teamNumber <= 8; teamNumber += 1) {
-      await roomService.joinRoom({
+    for (let seat = 1; seat <= 8; seat += 1) {
+      const joined = await roomService.joinRoom({
         roomCode: created.roomCode,
-        teamNumber,
-        socketId: `socket-${teamNumber}`,
+        displayName: `Đội ${seat}`,
+        socketId: `socket-${seat}`,
       });
+      expect(joined.teamNumber).toBe(seat);
     }
 
-    await expect(
-      roomService.joinRoom({ roomCode: created.roomCode, teamNumber: 1, socketId: "socket-9" }),
-    ).rejects.toMatchObject<ServiceError>({ code: "ROOM_FULL" });
+    const lobby = await roomService.getLobby(created.roomId);
+    expect(lobby.teams.map((team) => team.teamNumber)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
   it("preserves identity on reconnect and rejects an invalid session", async () => {
     const created = await roomService.createRoom("Host");
     const joined = await roomService.joinRoom({
       roomCode: created.roomCode,
-      teamNumber: 4,
+      displayName: "Đội 4",
       socketId: "socket-old",
     });
 
@@ -70,6 +71,6 @@ describeDatabase("RoomService integration", () => {
         sessionToken: "x".repeat(43),
         socketId: "socket-attacker",
       }),
-    ).rejects.toMatchObject<ServiceError>({ code: "SESSION_INVALID" });
+    ).rejects.toMatchObject({ code: "SESSION_INVALID" });
   });
 });

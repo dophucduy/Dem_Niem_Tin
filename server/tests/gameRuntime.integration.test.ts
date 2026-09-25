@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { GameModel, PlayerModel, QuestionModel, RoomModel, TeamModel } from "../src/models/index.js";
-import { ServiceError } from "../src/services/errors.js";
 import { GameRuntimeService } from "../src/services/gameRuntimeService.js";
 import { RoomService } from "../src/services/roomService.js";
 
@@ -28,12 +27,13 @@ describeDatabase("GameRuntimeService integration", () => {
 
   async function createReadyRoom() {
     const created = await roomService.createRoom("Integration Host");
-    for (let teamNumber = 1; teamNumber <= 8; teamNumber += 1) {
+    for (let seat = 1; seat <= 8; seat += 1) {
       const joined = await roomService.joinRoom({
         roomCode: created.roomCode,
-        teamNumber,
-        socketId: `socket-${teamNumber}`,
+        displayName: `Đội ${seat}`,
+        socketId: `socket-${seat}`,
       });
+      expect(joined.teamNumber).toBe(seat);
       await roomService.setReady(created.roomId, joined.playerId, true);
     }
     return created;
@@ -63,11 +63,12 @@ describeDatabase("GameRuntimeService integration", () => {
     expect(room._id.toString()).toBe(created.roomId);
     await expect(
       runtimeService.authenticateHost(created.roomCode, "x".repeat(43)),
-    ).rejects.toMatchObject<ServiceError>({ code: "UNAUTHORIZED" });
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
 
     const started = await runtimeService.startGame(created.roomId);
     expect(started).toMatchObject({ phase: "LOBBY", round: 0, trust: 100, paused: false });
-    expect(JSON.stringify(started)).not.toMatch(/role|faction|sessionToken/i);
+    // ROLE_REVEAL is a legitimate public phase name; only the secret fields must be absent.
+    expect(JSON.stringify(started)).not.toMatch(/"role"|"faction"|"sessionToken"/i);
 
     const game = await GameModel.findOne({ roomId: created.roomId }).lean();
     expect(game).toMatchObject({ phase: "ROLE_REVEAL", status: "ACTIVE" });
@@ -91,7 +92,7 @@ describeDatabase("GameRuntimeService integration", () => {
   it("refuses to start until all eight teams are connected and ready", async () => {
     const created = await roomService.createRoom("Host");
     const runtimeService = new GameRuntimeService(roomService, () => undefined);
-    await expect(runtimeService.startGame(created.roomId)).rejects.toMatchObject<ServiceError>({
+    await expect(runtimeService.startGame(created.roomId)).rejects.toMatchObject({
       code: "CONFLICT",
     });
   });

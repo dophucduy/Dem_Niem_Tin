@@ -11,7 +11,7 @@ export function PlayerJoinPage() {
   const { loading, errorMessage, handleJoin, session } = usePlayerGame();
 
   const onJoin = (roomCode: string, displayName: string) => {
-    handleJoin(roomCode, 0, displayName, () => {
+    handleJoin(roomCode, displayName, () => {
       navigate("/player/lobby");
     });
   };

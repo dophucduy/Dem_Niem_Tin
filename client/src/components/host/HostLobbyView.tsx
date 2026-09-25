@@ -111,7 +111,7 @@ export const HostLobbyView: React.FC<HostLobbyViewProps> = ({
             <Users className="w-4 h-4 text-trust-400" />
             Đã tham gia:
             <span className="font-mono font-bold text-base text-white px-2 py-0.5 rounded bg-night-900 border border-night-700">
-              {connectedCount} NGƯỜI CHƠI
+              {lobby.capacity ? `${connectedCount}/${lobby.capacity} NGƯỜI CHƠI` : `${connectedCount} NGƯỜI CHƠI`}
             </span>
           </div>
 

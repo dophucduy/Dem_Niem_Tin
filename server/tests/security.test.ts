@@ -33,7 +33,7 @@ vi.mock('../src/models/Room.js', () => ({
   RoomModel: { findOne: vi.fn() }
 }));
 vi.mock('../src/models/Team.js', () => ({
-  TeamModel: { findOne: vi.fn(), findById: vi.fn(), countDocuments: vi.fn() }
+  TeamModel: { findOne: vi.fn(), findById: vi.fn(), countDocuments: vi.fn(), exists: vi.fn() }
 }));
 vi.mock('../src/models/Vote.js', () => ({
   VoteModel: { create: vi.fn(), findOne: vi.fn() }
@@ -51,6 +51,9 @@ describe("Security Requirements (15 mandatory tests)", () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    // Ability/knowledge services treat a missing "exists" result as an eliminated team;
+    // default to an active team so each test only mocks what it exercises.
+    vi.mocked(TeamModel.exists).mockResolvedValue({ _id: "t1" } as any);
     roomService = new RoomService();
     runtimeService = new GameRuntimeService(roomService, vi.fn());
   });
@@ -99,6 +102,7 @@ describe("Security Requirements (15 mandatory tests)", () => {
     });
 
     it("must block answering question multiple times", async () => {
+      PlayerModel.findOne = mockQuery({ _id: "p1", gameId: "g1", teamId: "t1" });
       PlayerModel.findOneAndUpdate = mockQuery(null);
       QuestionModel.findById = mockQuery({ id: "q1", options: ["A", "B", "C", "D"], correctOption: 1 });
       await expect(submitAnswer("g1", 1, "p1", "q1", 0)).rejects.toMatchObject({ code: "CONFLICT" });
@@ -216,6 +220,55 @@ describe("Security Requirements (15 mandatory tests)", () => {
       expect(ActionModel.create).toHaveBeenCalledWith(
         expect.objectContaining({ mode: "TRUST_DRAIN", targetPlayerId: "p2" }),
       );
+    });
+  });
+
+  describe("8. Self-Target Rules", () => {
+    it("must reject self-targeting for roles that may not act on their own team", async () => {
+      TeamModel.findById = mockQuery({ _id: "t1", eliminated: false });
+      for (const role of ["INSPECTOR", "OVERSIGHT", "SPECIAL_6", "SPECIAL_7"] as const) {
+        PlayerModel.findOne = mockQuery({
+          _id: "p1", gameId: "g1", teamId: "t1", role, effectiveState: "SPECIAL", abilityUnlocked: true,
+        });
+        await expect(submitAbility("g1", 1, "p1", "t1")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      }
+    });
+
+    it("must still let restricted roles target a rival team", async () => {
+      PlayerModel.findOne = mockQuery({
+        _id: "p1", gameId: "g1", teamId: "t1", role: "INSPECTOR", effectiveState: "SPECIAL", abilityUnlocked: true,
+      });
+      TeamModel.findById = mockQuery({ _id: "t1", eliminated: false });
+      TeamModel.findOne = mockQuery({ _id: "t2", gameId: "g1", eliminated: false });
+      vi.mocked(ActionModel.create).mockResolvedValue({} as any);
+      await expect(submitAbility("g1", 1, "p1", "t2")).resolves.toBeUndefined();
+    });
+
+    it("must let LAW shield its own team (bảo vệ)", async () => {
+      PlayerModel.findOne = mockQuery({
+        _id: "p1", gameId: "g1", teamId: "t1", role: "LAW", effectiveState: "SPECIAL", abilityUnlocked: true,
+      });
+      TeamModel.findById = mockQuery({ _id: "t1", eliminated: false });
+      TeamModel.findOne = mockQuery({ _id: "t1", gameId: "g1", eliminated: false });
+      vi.mocked(ActionModel.create).mockResolvedValue({} as any);
+      await expect(submitAbility("g1", 1, "p1", "t1")).resolves.toBeUndefined();
+    });
+
+    it("must let CORRUPTOR seed noise on its own team (gieo nhiễu)", async () => {
+      PlayerModel.findOne = mockQuery({
+        _id: "p1", gameId: "g1", teamId: "t1", role: "CORRUPTOR", effectiveState: "SPECIAL", abilityUnlocked: true,
+      });
+      TeamModel.findById = mockQuery({ _id: "t1", eliminated: false });
+      TeamModel.findOne = mockQuery({ _id: "t1", gameId: "g1", eliminated: false });
+      vi.mocked(ActionModel.create).mockResolvedValue({} as any);
+      await expect(submitAbility("g1", 1, "p1", "t1", "TRUST_DRAIN")).resolves.toBeUndefined();
+    });
+
+    it("must reject a vote for the voter's own team", async () => {
+      PlayerModel.findOne = mockQuery({ _id: "p1", gameId: "g1", teamId: "t1" });
+      TeamModel.findOne = mockQuery({ _id: "t1", gameId: "g1", eliminated: false });
+      await expect(submitVote("g1", 1, "p1", "t1")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(VoteModel.create).not.toHaveBeenCalled();
     });
   });
 });

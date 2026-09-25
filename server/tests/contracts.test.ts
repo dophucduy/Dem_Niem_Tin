@@ -11,13 +11,17 @@ describe("shared development contracts", () => {
   });
 
   it("normalizes valid room join payloads", () => {
-    const result = joinRoomSchema.parse({ roomCode: " ab12cd ", teamNumber: 3 });
+    const result = joinRoomSchema.parse({ roomCode: " ab12cd ", displayName: " Đội 1 " });
     expect(result.roomCode).toBe("AB12CD");
-    expect(result.teamNumber).toBe(3);
+    expect(result.displayName).toBe("Đội 1");
   });
 
-  it("rejects invalid team numbers and weak session tokens", () => {
-    expect(joinRoomSchema.safeParse({ roomCode: "ABC123", teamNumber: 9 }).success).toBe(false);
+  it("rejects malformed joins, weak session tokens and client-chosen seat numbers", () => {
+    expect(joinRoomSchema.safeParse({ roomCode: "ABC12", displayName: "A" }).success).toBe(false);
+    expect(joinRoomSchema.safeParse({ roomCode: "ABC123", displayName: " " }).success).toBe(false);
+    // Seats are server-assigned: a client-sent seat number must never survive parsing.
+    const parsed = joinRoomSchema.parse({ roomCode: "ABC123", displayName: "A", teamNumber: 9 });
+    expect("teamNumber" in parsed).toBe(false);
     expect(reconnectSchema.safeParse({ roomCode: "ABC123", sessionToken: "short" }).success).toBe(false);
   });
 

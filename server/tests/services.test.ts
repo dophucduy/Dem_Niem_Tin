@@ -30,7 +30,7 @@ vi.mock('../src/models/Vote.js', () => ({
   VoteModel: { find: vi.fn() }
 }));
 vi.mock('../src/models/Team.js', () => ({
-  TeamModel: { updateOne: vi.fn(), findById: vi.fn(), find: vi.fn() }
+  TeamModel: { updateOne: vi.fn(), findById: vi.fn(), find: vi.fn(), exists: vi.fn() }
 }));
 vi.mock('../src/models/Question.js', () => ({
   QuestionModel: { findById: vi.fn() }
@@ -53,16 +53,27 @@ describe("Gameplay Services", () => {
       await assignRoles("game1");
 
       expect(PlayerModel.bulkWrite).toHaveBeenCalled();
+      const ops = vi.mocked(PlayerModel.bulkWrite).mock.calls[0][0] as any[];
+      const roles = ops.map((op) => op.updateOne.update[0].$set.role);
+      expect(roles).toHaveLength(8);
+      expect(roles.filter((role) => role === "CORRUPTOR")).toHaveLength(2);
+      expect(new Set(roles).size).toBe(7); // eight seats, seven distinct roles
     });
     
-    it("should not assign roles if player count is not 8", async () => {
+    it("should reject role assignment when fewer than two teams are present", async () => {
       const players = [{}];
       PlayerModel.find = mockQuery(players);
-      await expect(assignRoles("game1")).rejects.toThrow("Game must have exactly 8 players");
+      await expect(assignRoles("game1")).rejects.toThrow("Game must have at least 2 players to assign roles");
     });
   });
 
   describe("knowledgeService", () => {
+    beforeEach(() => {
+      // submitAnswer resolves the player and verifies its team is still active.
+      PlayerModel.findOne = mockQuery({ _id: "p1", gameId: "g1", teamId: "t1" });
+      vi.mocked(TeamModel.exists).mockResolvedValue({ _id: "t1" } as any);
+    });
+
     it("should unlock ability on correct answer", async () => {
       const player = { save: vi.fn() };
       PlayerModel.findOneAndUpdate = mockQuery(player);

@@ -35,7 +35,7 @@ describeDatabase("Full Game Flow (1 Host + 8 Players)", () => {
         difficulty,
         text: `Integration ${difficulty} question?`,
         options: ["A", "B", "C", "D"],
-        correctOption: 0,
+        correctAnswer: "A",
         explanation: "Test explanation"
       })),
     );
@@ -47,14 +47,15 @@ describeDatabase("Full Game Flow (1 Host + 8 Players)", () => {
     // 1. Host creates room
     const created = await roomService.createRoom("Host");
     
-    // 2. 8 Players join and set ready
+    // 2. Eight teams join in order and the server assigns seat numbers 1..8
     const players = [];
-    for (let teamNumber = 1; teamNumber <= 8; teamNumber++) {
+    for (let seat = 1; seat <= 8; seat++) {
       const joined = await roomService.joinRoom({
         roomCode: created.roomCode,
-        teamNumber,
-        socketId: `socket-${teamNumber}`,
+        displayName: `Đội ${seat}`,
+        socketId: `socket-${seat}`,
       });
+      expect(joined.teamNumber).toBe(seat);
       await roomService.setReady(created.roomId, joined.playerId, true);
       players.push(joined);
     }
@@ -66,9 +67,9 @@ describeDatabase("Full Game Flow (1 Host + 8 Players)", () => {
     
     expect(startedState.phase).toBe("LOBBY");
     
-    // Force transition to ROLE_REVEAL, then NIGHT_KNOWLEDGE
-    await runtimeService.skipTimer(created.roomId); // to ROLE_REVEAL
+    // startGame already entered ROLE_REVEAL, so a single skip reaches the first knowledge night.
     const nightState = await runtimeService.skipTimer(created.roomId); // to NIGHT_KNOWLEDGE
+    expect(nightState.gamePhase).toBe("NIGHT_KNOWLEDGE");
     expect(nightState.phase).toBe("NIGHT");
 
     const game = await GameModel.findOne({ roomId: created.roomId }).lean();
@@ -81,6 +82,8 @@ describeDatabase("Full Game Flow (1 Host + 8 Players)", () => {
       expect(gameDoc?.activeQuestion).toBeDefined();
 
       for (const p of players) {
+        const team = await TeamModel.findOne({ gameId: game!._id, _id: p.teamId }).lean();
+        if (!team || team.eliminated) continue; // eliminated teams are spectators
         await runtimeService.answerQuestion(created.roomId, p.playerId, { 
           questionId: gameDoc!.activeQuestion!.id, 
           selectedOption: 0 
@@ -135,10 +138,18 @@ describeDatabase("Full Game Flow (1 Host + 8 Players)", () => {
       let votesCount = 0;
       for (const p of players) {
         const team = await TeamModel.findOne({ gameId: game!._id, _id: p.teamId }).lean();
-        if (team && !team.eliminated) {
-           await runtimeService.submitVote(created.roomId, p.playerId, { targetTeamId: targetTeam!._id.toString() });
-           votesCount++;
-        }
+        if (!team || team.eliminated) continue;
+        // The ballot rejects self-votes, so the targeted team votes for a rival instead.
+        const voteTarget = team.teamNumber === targetTeamNumber
+          ? await TeamModel.findOne({
+              gameId: game!._id,
+              eliminated: false,
+              teamNumber: { $ne: team.teamNumber },
+            }).lean()
+          : targetTeam;
+        expect(voteTarget).not.toBeNull();
+        await runtimeService.submitVote(created.roomId, p.playerId, { targetTeamId: voteTarget!._id.toString() });
+        votesCount++;
       }
 
       // 7. Vote Result & Trust Update

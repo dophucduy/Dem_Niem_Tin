@@ -1,4 +1,4 @@
-import { type LobbyState, type RoomStatus } from "@dem-niem-tin/shared";
+import { GAME_CONFIG, type LobbyState, type RoomStatus } from "@dem-niem-tin/shared";
 import { Types } from "mongoose";
 import { PlayerModel, RoomModel, TeamModel, type RoomDocument, type TeamDocument, type PlayerDocument } from "../models/index.js";
 import { ServiceError } from "./errors.js";
@@ -58,7 +58,6 @@ export class RoomService {
 
   async joinRoom(input: {
     roomCode: string;
-    teamNumber?: number;
     displayName: string;
     socketId: string;
   }): Promise<JoinedPlayerSession & { lobby: LobbyState }> {
@@ -78,14 +77,15 @@ export class RoomService {
     if (!allocatedRoom) throw new ServiceError("ROOM_NOT_FOUND", "Room is no longer accepting participants");
 
     const teamNumber = allocatedRoom.nextTeamNumber ?? 1;
-    const team = await TeamModel.create({
-      roomId: room._id,
-      teamNumber,
-      displayName: input.displayName,
-    });
 
     const sessionToken = createSessionToken();
+    let team: { _id: Types.ObjectId } | undefined;
     try {
+      team = await TeamModel.create({
+        roomId: room._id,
+        teamNumber,
+        displayName: input.displayName,
+      });
       const player = await PlayerModel.create({
         roomId: room._id,
         teamId: team._id,
@@ -104,7 +104,7 @@ export class RoomService {
         lobby: await this.getLobby(room._id),
       };
     } catch (error) {
-      await TeamModel.deleteOne({ _id: team._id });
+      if (team) await TeamModel.deleteOne({ _id: team._id });
       if (isDuplicateKeyError(error)) {
         throw new ServiceError("CONFLICT", "Could not allocate a participant number; please retry");
       }
@@ -201,7 +201,7 @@ export class RoomService {
       status: room.status as RoomStatus,
       teams: publicTeams,
       connectedCount: publicTeams.filter((team) => team.connected).length,
-      capacity: 8,
+      capacity: GAME_CONFIG.teamCount,
     };
   }
 }

@@ -198,6 +198,8 @@ export type ReconnectResult = {
   room: LobbyState;
   playerId: string;
   teamId: string;
+  /** Server-assigned participant number, echoed so clients can repair stale sessions. */
+  teamNumber?: number;
   privateState?: PrivatePlayerState;
   publicState?: PublicGameState;
 };
