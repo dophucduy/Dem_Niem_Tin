@@ -1,4 +1,5 @@
 import {
+  GAME_CONFIG,
   type GamePhase,
   type AnswerQuestionPayload,
   type AnswerQuestionResult,
@@ -416,7 +417,10 @@ export class GameRuntimeService {
           corruptorsAlive++;
         }
       }
-      publicState.factionWin = corruptorsAlive === 0 ? "TRUST" : "CORRUPTION";
+      // Surviving all three rounds is not enough for corruption: they must also have
+      // eroded public trust to half or less, otherwise TRUST takes the win.
+      const trustCollapsed = engine.snapshot.trust <= GAME_CONFIG.corruptionWinTrustThreshold;
+      publicState.factionWin = corruptorsAlive > 0 && trustCollapsed ? "CORRUPTION" : "TRUST";
     }
 
     return publicState;

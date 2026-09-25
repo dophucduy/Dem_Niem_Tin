@@ -3,6 +3,7 @@ import {
   SERVER_EVENTS,
   type ClientToServerEvents,
   type ServerToClientEvents,
+  type GamePhase,
   type ReactionType,
   type TeamReaction,
   type ReactionSummary,
@@ -52,12 +53,29 @@ function buildReactionSummary(roomId: string): ReactionSummary {
   return summary;
 }
 
-/** Clear reactions for a room (call when phase changes away from DISCUSSION) */
+/** Drop a room's reaction store and its rate-limit entries. */
 export function clearRoomReactions(roomId: string): void {
   roomReactions.delete(roomId);
   // Also clear rate-limit entries for this room
   for (const key of lastReactionTime.keys()) {
     if (key.startsWith(roomId + ":")) lastReactionTime.delete(key);
+  }
+}
+
+// Tracks the phase each room was last seen in, so resets only run on real phase changes.
+const roomPhase = new Map<string, GamePhase>();
+
+/**
+ * Reactions only live inside the phase they were sent in. Every phase change wipes a
+ * room's reaction store, so each round's DISCUSSION starts from zero; entering
+ * DISCUSSION also broadcasts the empty summary to everyone in the room.
+ */
+export function syncReactionsWithPhase(io: GameServer, roomId: string, phase: GamePhase): void {
+  if (roomPhase.get(roomId) === phase) return; // pause/resume refreshes stay in-phase
+  roomPhase.set(roomId, phase);
+  clearRoomReactions(roomId);
+  if (phase === "DISCUSSION") {
+    io.to(`room:${roomId}`).emit(SERVER_EVENTS.REACTIONS_UPDATED, buildReactionSummary(roomId));
   }
 }
 

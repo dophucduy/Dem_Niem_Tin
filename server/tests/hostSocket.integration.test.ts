@@ -156,4 +156,78 @@ describeDatabase("Host Socket.IO integration", () => {
     expect(reset).toMatchObject({ ok: true, data: { room: { status: "LOBBY" } } });
     expect(publicUpdates.length).toBeGreaterThan(0);
   });
+
+  it("resets reaction counts at the start of every discussion round", async () => {
+    await QuestionModel.insertMany([
+      {
+        category: "Test",
+        difficulty: "easy",
+        text: "Reaction easy question?",
+        options: ["A", "B", "C", "D"],
+        correctAnswer: "A",
+      },
+      {
+        category: "Test",
+        difficulty: "medium",
+        text: "Reaction medium question?",
+        options: ["A", "B", "C", "D"],
+        correctAnswer: "A",
+      },
+    ]);
+    const host = await connectClient();
+    const created = await emitAck<any>(host, "room:create", { hostName: "Host" });
+    expect(created.ok).toBe(true);
+    const hostAuth = {
+      roomCode: created.data.room.roomCode,
+      hostSessionToken: created.data.hostSessionToken,
+    };
+
+    const players: ClientSocket[] = [];
+    for (const displayName of ["Đội 1", "Đội 2"]) {
+      const player = await connectClient();
+      players.push(player);
+      const joined = await emitAck<any>(player, "room:join", { roomCode: hostAuth.roomCode, displayName });
+      expect(joined.ok).toBe(true);
+      const ready = await emitAck<any>(player, "player:ready", { ready: true });
+      expect(ready.ok).toBe(true);
+    }
+
+    const summaries: any[] = [];
+    host.on("reactions:updated", (summary: any) => summaries.push(summary));
+    const latestSummary = () => summaries[summaries.length - 1];
+
+    expect((await emitAck<any>(host, "host:start-game", hostAuth)).ok).toBe(true);
+
+    // Advance to the first DISCUSSION: ROLE_REVEAL -> KN -> ABILITY -> RESOLUTION -> DAY_RESULT -> DISCUSSION.
+    let skipped: any;
+    for (let step = 0; step < 5; step += 1) {
+      skipped = await emitAck<any>(host, "host:skip-timer", hostAuth);
+      expect(skipped.ok).toBe(true);
+    }
+    expect(skipped.data.publicState).toMatchObject({ gamePhase: "DISCUSSION", round: 1 });
+    // Entering DISCUSSION broadcasts a zeroed summary right away.
+    expect(latestSummary()).toMatchObject({ AGREE: 0, SUSPECT: 0, OBJECT: 0, QUESTION: 0, reactions: [] });
+
+    const firstReaction = await emitAck<any>(players[0], "reaction:send", { reaction: "AGREE" });
+    expect(firstReaction).toMatchObject({ ok: true });
+    expect(latestSummary()).toMatchObject({ AGREE: 1, SUSPECT: 0, OBJECT: 0, QUESTION: 0 });
+    expect(latestSummary().reactions).toHaveLength(1);
+
+    // Advance to round 2's DISCUSSION: VOTING -> VOTE_RESULT -> TRUST_UPDATE -> NEXT_ROUND ->
+    // NIGHT_KNOWLEDGE -> NIGHT_ABILITY -> NIGHT_RESOLUTION -> DAY_RESULT -> DISCUSSION.
+    for (let step = 0; step < 9; step += 1) {
+      skipped = await emitAck<any>(host, "host:skip-timer", hostAuth);
+      expect(skipped.ok).toBe(true);
+    }
+    expect(skipped.data.publicState).toMatchObject({ gamePhase: "DISCUSSION", round: 2 });
+    // The previous round's AGREE must not leak into the new round's summary.
+    expect(latestSummary()).toMatchObject({ AGREE: 0, SUSPECT: 0, OBJECT: 0, QUESTION: 0, reactions: [] });
+
+    const secondReaction = await emitAck<any>(players[0], "reaction:send", { reaction: "SUSPECT" });
+    expect(secondReaction).toMatchObject({ ok: true });
+    expect(latestSummary()).toMatchObject({ AGREE: 0, SUSPECT: 1, OBJECT: 0, QUESTION: 0 });
+
+    const cleanup = await emitAck<any>(host, "host:reset-game", hostAuth);
+    expect(cleanup).toMatchObject({ ok: true });
+  });
 });

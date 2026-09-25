@@ -11,7 +11,7 @@ import { RoomService } from "../services/roomService.js";
 import { GameRuntimeService } from "../services/gameRuntimeService.js";
 import { connectionCheckSchema } from "../validation/socketSchemas.js";
 import { registerLobbyHandlers, type SocketIdentity } from "./registerLobbyHandlers.js";
-import { registerGameHandlers } from "./gameHandlers.js";
+import { registerGameHandlers, syncReactionsWithPhase } from "./gameHandlers.js";
 import { registerHostGameHandlers } from "./registerHostGameHandlers.js";
 
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketIdentity>;
@@ -34,7 +34,10 @@ export function registerSocketHandlers(io: GameServer): void {
   gameRuntimeService = new GameRuntimeService(roomService, (roomId, state) => {
     io.to(`room:${roomId}`).emit(SERVER_EVENTS.PUBLIC_STATE_UPDATED, state);
   }, {
-    onPhaseChanged: (roomId) => publishPrivateStates(roomId, gameRuntimeService),
+    onPhaseChanged: (roomId, state) => {
+      syncReactionsWithPhase(io, roomId, state.phase);
+      return publishPrivateStates(roomId, gameRuntimeService);
+    },
   });
 
   io.on("connection", (socket: GameSocket) => {

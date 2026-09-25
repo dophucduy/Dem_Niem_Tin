@@ -5,6 +5,8 @@ export const GAME_CONFIG = {
   teamCount: 8,
   rounds: 3,
   initialTrust: 100,
+  /** Corruption only wins when the final public trust collapsed to this value or below (with a corruptor alive). */
+  corruptionWinTrustThreshold: 50,
   nightDurationSeconds: 180,
   discussionDurationSeconds: 90,
   votingDurationSeconds: 45,

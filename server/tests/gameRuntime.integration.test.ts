@@ -129,4 +129,17 @@ describeDatabase("GameRuntimeService integration", () => {
     expect(visited.filter((state) => state.phase === "NIGHT_KNOWLEDGE").map((state) => state.round))
       .toEqual([1, 2, 3]);
   });
+
+  it("declares TRUST the winner when corruptors survive but public trust never collapsed", async () => {
+    const created = await createReadyRoom();
+    const runtimeService = new GameRuntimeService(roomService, () => undefined);
+    await runtimeService.authenticateHost(created.roomCode, created.sessionToken);
+    await runtimeService.startGame(created.roomId);
+
+    // Both corruptor teams are still alive, but trust is untouched (100). Survival
+    // alone must not hand corruption the win — trust must collapse to ≤50 first.
+    await runtimeService.endGame(created.roomId);
+    const finalState = await runtimeService.reconnectHost(created.roomId);
+    expect(finalState).toMatchObject({ phase: "FINAL", factionWin: "TRUST" });
+  });
 });
