@@ -335,7 +335,6 @@ export function PlayerPage() {
             roundNumber={publicState?.round || 1}
             questionText={SAMPLE_QUESTIONS[0].text}
             explanation={SAMPLE_QUESTIONS[0].explanation}
-            onProceed={() => setDemoScreen("P06_ABILITY")}
           />
         )}
 
@@ -347,7 +346,6 @@ export function PlayerPage() {
             questionText={SAMPLE_QUESTIONS[0].text}
             correctOptionText={SAMPLE_QUESTIONS[0].options[SAMPLE_QUESTIONS[0].correctOption]}
             explanation={SAMPLE_QUESTIONS[0].explanation}
-            onProceed={() => setDemoScreen("P06_CITIZEN")}
           />
         )}
 

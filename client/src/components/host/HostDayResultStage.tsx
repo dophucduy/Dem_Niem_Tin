@@ -44,6 +44,12 @@ export const HostDayResultStage: React.FC<HostDayResultStageProps> = ({
 }) => {
   const displayClues = publicClues;
 
+  const NIGHT_THEMES: Record<number, string> = {
+    1: "PHÁT HIỆN DẤU HIỆU",
+    2: "KIỂM SOÁT QUYỀN LỰC",
+    3: "NIỀM TIN VÀ TRÁCH NHIỆM",
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 py-2 animate-fade-in">
       {/* Top HUD Status Row */}
@@ -87,32 +93,77 @@ export const HostDayResultStage: React.FC<HostDayResultStageProps> = ({
               <FileText className="w-4 h-4 text-amber-400" />
               Bảng hồ sơ manh mối công khai ({displayClues.length})
             </div>
-            <span className="text-xs text-slate-400 font-mono">
-              Trình chiếu toàn thể lớp học
-            </span>
+            <div className="flex items-center gap-3">
+              {NIGHT_THEMES[round] && (
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-trust-950/80 border border-trust-600/40 text-trust-300 uppercase tracking-wider">
+                  Chủ đề: {NIGHT_THEMES[round]}
+                </span>
+              )}
+              <span className="text-xs text-slate-400 font-mono">
+                Trình chiếu toàn thể lớp học
+              </span>
+            </div>
           </div>
 
-          {/* Clues List */}
+          {/* Clues List - Enhanced with structured checklist */}
           <div className="space-y-3.5">
-            {displayClues.map((clue, idx) => (
-              <div
-                key={clue.id || idx}
-                className="p-5 rounded-2xl bg-night-950/80 border border-night-700 space-y-2 text-left transition-all hover:border-amber-500/40 shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-bold text-white flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    {clue.title}
+            {displayClues.map((clue, idx) => {
+              // Parse structured clue descriptions containing ✓ / ? markers
+              const lines = clue.description.split('\n').map(l => l.trim()).filter(Boolean);
+              const hasChecklist = lines.some(l => l.startsWith('✓') || l.startsWith('?') || l.startsWith('✗'));
+
+              return (
+                <div
+                  key={clue.id || idx}
+                  className="p-5 rounded-2xl bg-night-950/80 border border-night-700 border-l-4 border-l-amber-500/60 space-y-3 text-left transition-all hover:border-amber-500/40 shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-bold text-white flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      {clue.title}
+                    </div>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-950/80 border border-amber-600/40 text-amber-300">
+                      HỒ SƠ #{idx + 1} • VÒNG {round}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-night-800 border border-night-700 text-amber-300">
-                    HỒ SƠ #{idx + 1}
-                  </span>
+
+                  {hasChecklist ? (
+                    <div className="space-y-1.5">
+                      {lines.map((line, li) => {
+                        const isConfirmed = line.startsWith('✓');
+                        const isUnknown = line.startsWith('?');
+                        const text = line.replace(/^[✓?✗]\s*/, '');
+                        return (
+                          <div
+                            key={li}
+                            className={`flex items-start gap-2.5 p-2.5 rounded-lg text-xs sm:text-sm leading-relaxed ${
+                              isConfirmed
+                                ? 'bg-amber-950/50 border border-amber-800/50'
+                                : 'bg-night-900/60 border border-night-700/60'
+                            }`}
+                          >
+                            <span className="shrink-0 mt-0.5 text-base">
+                              {isConfirmed ? '✅' : '❓'}
+                            </span>
+                            <span className={
+                              isConfirmed
+                                ? 'text-amber-200 font-semibold'
+                                : 'text-slate-400 italic'
+                            }>
+                              {text}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                      {clue.description}
+                    </p>
+                  )}
                 </div>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
-                  {clue.description}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="p-4 rounded-2xl bg-night-950/90 border border-night-700 flex items-center gap-3 text-xs text-slate-400">
@@ -215,4 +266,3 @@ export const HostDayResultStage: React.FC<HostDayResultStageProps> = ({
     </div>
   );
 };
-

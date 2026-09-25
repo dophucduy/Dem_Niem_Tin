@@ -1,4 +1,5 @@
 import { PlayerModel } from "../models/Player.js";
+import { ActionModel } from "../models/Action.js";
 import { ROLE_DISTRIBUTION, type Role, type Faction, type PrivatePlayerState } from "@dem-niem-tin/shared";
 
 function shuffle<T>(array: readonly T[]): T[] {
@@ -50,13 +51,19 @@ export async function assignRoles(gameId: string): Promise<void> {
   await PlayerModel.bulkWrite(bulkOps);
 }
 
-export async function getPrivatePlayerState(playerId: string): Promise<PrivatePlayerState | null> {
+export async function getPrivatePlayerState(playerId: string, round?: number): Promise<PrivatePlayerState | null> {
   const player = await PlayerModel.findById(playerId)
     .select("+role +faction +effectiveState +abilityUnlocked +privateResults")
     .exec();
     
   if (!player || !player.role || !player.faction || !player.effectiveState) {
     return null;
+  }
+
+  let hasActedThisRound = false;
+  if (round && round > 0 && player.gameId) {
+    hasActedThisRound =
+      (await ActionModel.exists({ gameId: player.gameId, round, playerId: player._id })) !== null;
   }
 
   return {
@@ -67,5 +74,6 @@ export async function getPrivatePlayerState(playerId: string): Promise<PrivatePl
     abilityUnlocked: player.abilityUnlocked ?? false,
     effectiveState: player.effectiveState as "SPECIAL" | "CITIZEN",
     privateResults: (player.privateResults as any) || [],
+    hasActedThisRound,
   };
 }

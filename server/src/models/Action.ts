@@ -6,6 +6,7 @@ const actionSchema = new Schema(
     round: { type: Number, required: true, min: 1, max: 3 },
     playerId: { type: Schema.Types.ObjectId, ref: "Player", required: true },
     targetPlayerId: { type: Schema.Types.ObjectId, ref: "Player" },
+    mode: { type: String, enum: ["TRUST_DRAIN", "INTERFERE"] },
   },
   { timestamps: true, versionKey: false },
 );

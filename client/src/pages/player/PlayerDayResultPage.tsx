@@ -2,46 +2,49 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlayerGame } from "../../context/PlayerContext";
 import { TrustMeter } from "../../components/common/TrustMeter";
-import { GameButton } from "../../components/common/GameButton";
-import { 
-  Sun, 
-  FileText, 
-  AlertTriangle, 
-  ShieldCheck, 
-  Users, 
-  ArrowRight, 
-  MessageSquare,
-  Sparkles,
-  Info
-} from "lucide-react";
+import {
+  PrivateResultView,
+  selectRoundResult,
+  PrivateResultEmptyVariant,
+} from "../../components/player/PrivateResultView";
+import { Sun, FileText, Sparkles, Info, Clock, Lock } from "lucide-react";
 
 export function PlayerDayResultPage() {
   const navigate = useNavigate();
-  const { publicState, session, teams } = usePlayerGame();
+  const { publicState, session, activeRole, privateState } = usePlayerGame();
 
   const round = publicState?.round || 1;
   const trust = publicState?.trust ?? 100;
   const publicClues = publicState?.publicClues || [];
-  const myTeam = session?.teamNumber || 4;
+  const myTeam = session?.teamNumber ?? 0;
 
-  // Phase Guard: Must be in DAY phase
+  // Phase guard: exact gamePhase only, so a stale render never bounces the
+  // player away from the morning recap.
   React.useEffect(() => {
-    if (session && publicState) {
-      if (publicState.phase === "NIGHT") {
-        if (publicState.activeQuestion !== undefined) {
-          navigate("/player/night/question");
-        } else {
-          navigate("/player/night/ability");
-        }
-      } else if (publicState.phase === "LOBBY") {
-        navigate("/player/role");
-      } else if (publicState.phase === "VOTING") {
-        navigate("/player/vote");
-      }
+    if (!publicState) return;
+    if (publicState.gamePhase === "NIGHT_KNOWLEDGE") {
+      navigate("/player/night/question", { replace: true });
+    } else if (publicState.gamePhase === "NIGHT_ABILITY") {
+      navigate(
+        privateState?.abilityUnlocked === false ? "/player/night/observe" : "/player/night/ability",
+        { replace: true }
+      );
+    } else if (publicState.gamePhase === "NIGHT_RESOLUTION") {
+      navigate("/player/night/private-result", { replace: true });
     }
-  }, [session, publicState?.phase, publicState?.activeQuestion, navigate]);
+  }, [publicState?.gamePhase, privateState?.abilityUnlocked, navigate]);
 
-  const displayClues = publicClues;
+  // Private result of the current round, shown next to the public clues so the
+  // day discussion can link both sources of information.
+  const myResult = selectRoundResult(privateState?.privateResults, round);
+  const eliminated = publicState?.teams?.find((t) => t.teamNumber === myTeam)?.eliminated ?? false;
+  const emptyVariant: PrivateResultEmptyVariant = !privateState
+    ? "WAITING"
+    : eliminated
+    ? "ELIMINATED"
+    : privateState.effectiveState === "CITIZEN"
+    ? "CITIZEN"
+    : "NO_ACTION";
 
   return (
     <div className="w-full max-w-md mx-auto space-y-4 animate-fade-in">
@@ -78,7 +81,7 @@ export function PlayerDayResultPage() {
         </div>
         <TrustMeter trust={trust} variant="broadcast" />
         <p className="text-[11px] text-slate-400 text-center pt-1 leading-relaxed">
-          {trust >= 80 
+          {trust >= 80
             ? "Lòng tin của nhân dân đang được giữ vững. Hãy tiếp tục phát huy tinh thần minh bạch!"
             : trust >= 50
             ? "Có dấu hiệu suy giảm niềm tin do các hành vi tiêu cực. Cần khẩn trương tìm ra kẻ vụ lợi!"
@@ -86,63 +89,80 @@ export function PlayerDayResultPage() {
         </p>
       </div>
 
+      {/* Private Result of the Night: links secret findings to public clues */}
+      <div className="glass-panel-elevated rounded-2xl p-4 sm:p-5 border border-night-700 space-y-3">
+        <div className="flex items-center justify-between border-b border-night-700/80 pb-2.5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+            <Lock className="w-4 h-4 text-amber-400" />
+            Kết quả mật — Đêm 0{round}
+          </h3>
+          <span className="text-[10px] text-slate-500 font-mono">Chỉ đội bạn được xem</span>
+        </div>
+
+        <PrivateResultView
+          role={privateState?.role ?? activeRole}
+          myTeamNumber={myTeam}
+          roundNumber={round}
+          result={myResult}
+          emptyVariant={emptyVariant}
+          compact
+        />
+      </div>
+
       {/* Public Clues Dossier */}
       <div className="glass-panel-elevated rounded-2xl p-5 border border-night-700 space-y-3">
         <div className="flex items-center justify-between border-b border-night-700/80 pb-2.5">
           <h3 className="text-xs font-bold uppercase tracking-wider text-trust-300 flex items-center gap-1.5">
             <FileText className="w-4 h-4 text-trust-400" />
-            Hồ sơ manh mối công khai ({displayClues.length})
+            Hồ sơ manh mối công khai ({publicClues.length})
           </h3>
           <span className="text-[10px] text-slate-500 font-mono">Toàn lớp được xem</span>
         </div>
 
-        <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-          {displayClues.map((clue, idx) => (
-            <div
-              key={clue.id || idx}
-              className="p-3.5 rounded-xl bg-night-950/80 border border-night-700 text-left space-y-1.5 transition-all hover:border-trust-500/40"
-            >
-              <div className="flex items-center justify-between text-xs font-bold text-white">
-                <span className="flex items-center gap-1.5 text-trust-300">
-                  <Sparkles className="w-3.5 h-3.5 text-trust-400" />
-                  {clue.title}
-                </span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-night-800 text-slate-400 border border-night-700">
-                  Tài liệu #{idx + 1}
-                </span>
+        {publicClues.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-3 leading-relaxed">
+            Chưa có manh mối công khai nào được giải mã trong đêm nay.
+          </p>
+        ) : (
+          <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+            {publicClues.map((clue, idx) => (
+              <div
+                key={clue.id || idx}
+                className="p-3.5 rounded-xl bg-night-950/80 border border-night-700 text-left space-y-1.5 transition-all hover:border-trust-500/40"
+              >
+                <div className="flex items-center justify-between text-xs font-bold text-white">
+                  <span className="flex items-center gap-1.5 text-trust-300">
+                    <Sparkles className="w-3.5 h-3.5 text-trust-400" />
+                    {clue.title}
+                  </span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-night-800 text-slate-400 border border-night-700">
+                    Tài liệu #{idx + 1}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {clue.description}
+                </p>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                {clue.description}
-              </p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Strategic Preparation Advice */}
       <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex items-start gap-2.5 text-xs text-slate-300">
         <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
         <p className="leading-relaxed text-[11px]">
-          Phiên thảo luận ban ngày chuẩn bị bắt đầu. Hãy liên kết <strong className="text-trust-300">kết quả mật riêng của đội bạn</strong> với các <strong className="text-white">manh mối công khai</strong> trên để chuẩn bị phát biểu và chất vấn!
+          Hãy liên kết <strong className="text-trust-300">kết quả mật riêng của đội bạn</strong> với các <strong className="text-white">manh mối công khai</strong> trên để chuẩn bị phát biểu và chất vấn trong phiên thảo luận!
         </p>
       </div>
 
-      {/* Proceed to Discussion */}
-      <div className="pt-1">
-        <GameButton
-          variant="primary"
-          size="lg"
-          fullWidth
-          onClick={() => {
-            alert("Đội bạn đã sẵn sàng! Giảng viên sẽ mở phiên thảo luận trên màn chiếu.");
-            navigate("/player/day/discussion");
-          }}
-          icon={<MessageSquare className="w-5 h-5" />}
-        >
-          SẴN SÀNG THẢO LUẬN BAN NGÀY
-        </GameButton>
+      {/* Waiting Status: the discussion phase advances server-side */}
+      <div className="p-3.5 rounded-xl bg-night-950/80 border border-indigo-500/30 flex items-start gap-2.5 text-xs text-slate-300">
+        <Clock className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5 animate-spin" />
+        <p className="leading-relaxed text-[11px]">
+          Đội bạn đã nắm đủ thông tin. <strong className="text-white">Giảng viên</strong> sẽ mở phiên thảo luận trên màn chiếu khi cả lớp sẵn sàng — hãy tiếp tục chuẩn bị lập luận!
+        </p>
       </div>
     </div>
   );
 }
-

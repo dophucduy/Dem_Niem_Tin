@@ -2,6 +2,7 @@ import React, { useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHostGame } from "../../context/HostContext";
 import { HostVoteResultStage, EliminationDetails } from "../../components/host/HostVoteResultStage";
+import { extractVoteDetails } from "../../utils/voteResult";
 
 export function HostVoteResultPage() {
   const navigate = useNavigate();
@@ -11,22 +12,24 @@ export function HostVoteResultPage() {
   const trust = publicState?.trust ?? 100;
 
   const eliminationData = useMemo<EliminationDetails | undefined>(() => {
-    if (!publicState?.publicEvents) return undefined;
+    const details = extractVoteDetails(publicState?.publicEvents, round);
+    if (!details) return undefined;
 
-    const voteEvent = [...publicState.publicEvents]
-      .reverse()
-      .find((ev) => ev.type === "ELIMINATION" || ev.type === "VOTE_TIE");
-
-    if (!voteEvent) return undefined;
-
-    try {
-      return JSON.parse(voteEvent.message);
-    } catch {
-      return {
-        round,
-        isTie: voteEvent.type === "VOTE_TIE",
-      };
-    }
+    return {
+      round: details.round,
+      eliminatedTeamNumber: details.eliminatedTeamNumber,
+      eliminatedTeamName: details.eliminatedTeamName,
+      votesReceived: details.votesReceived,
+      faction: details.faction,
+      role: details.role,
+      trustDelta: details.trustDelta,
+      isTie: details.isTie,
+      voteDistribution: details.voteDistribution.map((entry) => ({
+        teamNumber: entry.teamNumber,
+        teamName: entry.displayName,
+        votes: entry.votes,
+      })),
+    };
   }, [publicState?.publicEvents, round]);
 
   useEffect(() => {

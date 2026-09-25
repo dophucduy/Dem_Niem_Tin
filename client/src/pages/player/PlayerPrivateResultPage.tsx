@@ -1,53 +1,58 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlayerGame } from "../../context/PlayerContext";
-import { PrivateResultView } from "../../components/player/PrivateResultView";
+import {
+  PrivateResultView,
+  selectRoundResult,
+  PrivateResultEmptyVariant,
+} from "../../components/player/PrivateResultView";
 
 export function PlayerPrivateResultPage() {
   const navigate = useNavigate();
-  const { activeRole, session, publicState, privateState } = usePlayerGame();
-  const myTeam = session?.teamNumber || 4;
+  const { session, publicState, privateState, activeRole } = usePlayerGame();
 
-  // Phase Guard: Must be in DAY phase to view morning private findings
+  const myTeam = session?.teamNumber ?? 0;
+  const round = publicState?.round ?? 1;
+
+  // Phase guard: this dossier belongs to NIGHT_RESOLUTION only. When the game
+  // is still on an earlier night step, return to its own screen so the player
+  // never skips answering or acting.
   React.useEffect(() => {
-    if (session && publicState) {
-      if (publicState.phase === "NIGHT") {
-        if (publicState.activeQuestion !== undefined) {
-          navigate("/player/night/question");
-        } else {
-          navigate("/player/night/ability");
-        }
-      } else if (publicState.phase === "LOBBY") {
-        navigate("/player/role");
-      } else if (publicState.phase === "VOTING") {
-        navigate("/player/vote");
-      }
+    if (!publicState) return;
+    if (publicState.gamePhase === "NIGHT_KNOWLEDGE") {
+      navigate("/player/night/question", { replace: true });
+    } else if (publicState.gamePhase === "NIGHT_ABILITY") {
+      navigate(
+        privateState?.abilityUnlocked === false ? "/player/night/observe" : "/player/night/ability",
+        { replace: true }
+      );
     }
-  }, [session, publicState?.phase, publicState?.activeQuestion, navigate]);
+  }, [publicState?.gamePhase, privateState?.abilityUnlocked, navigate]);
 
-  if (!activeRole) {
-    return <div className="w-full max-w-md rounded-2xl border border-night-700 bg-night-900 p-5 text-center text-slate-300">Đang chờ vai trò từ máy chủ.</div>;
-  }
+  // Only the result resolved in the current round is shown; older entries stay
+  // hidden so last night's data can never masquerade as tonight's finding.
+  const myResult = selectRoundResult(privateState?.privateResults, round);
 
-  const realResult = privateState?.privateResults && privateState.privateResults.length > 0
-    ? privateState.privateResults[privateState.privateResults.length - 1]
-    : null;
+  const eliminated =
+    publicState?.teams?.find((t) => t.teamNumber === myTeam)?.eliminated ?? false;
 
-  const displayResult = realResult;
-
-  const onAcknowledge = () => {
-    navigate("/player/day/result");
-  };
+  const emptyVariant: PrivateResultEmptyVariant = !privateState
+    ? "WAITING"
+    : eliminated
+    ? "ELIMINATED"
+    : privateState.effectiveState === "CITIZEN"
+    ? "CITIZEN"
+    : "NO_ACTION";
 
   return (
     <div className="w-full max-w-md mx-auto space-y-4">
-      {displayResult ? <PrivateResultView
-        role={activeRole}
+      <PrivateResultView
+        role={privateState?.role ?? activeRole}
         myTeamNumber={myTeam}
-        roundNumber={publicState?.round || 1}
-        result={displayResult}
-        onAcknowledge={onAcknowledge}
-      /> : <div className="rounded-2xl border border-night-700 bg-night-900 p-5 text-center text-slate-300">Chưa có kết quả riêng từ máy chủ.</div>}
+        roundNumber={round}
+        result={myResult}
+        emptyVariant={emptyVariant}
+      />
     </div>
   );
 }

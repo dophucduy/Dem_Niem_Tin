@@ -34,6 +34,11 @@ export const answerQuestionSchema = z.object({
 
 export const useAbilitySchema = z.object({
   targetTeamId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
+  mode: z.enum(["TRUST_DRAIN", "INTERFERE"]).optional(),
+});
+
+export const sendReactionSchema = z.object({
+  reaction: z.enum(["AGREE", "SUSPECT", "OBJECT", "QUESTION"]),
 });
 
 export const submitVoteSchema = z.object({

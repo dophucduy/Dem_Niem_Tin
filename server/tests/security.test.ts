@@ -33,7 +33,7 @@ vi.mock('../src/models/Room.js', () => ({
   RoomModel: { findOne: vi.fn() }
 }));
 vi.mock('../src/models/Team.js', () => ({
-  TeamModel: { findOne: vi.fn(), countDocuments: vi.fn() }
+  TeamModel: { findOne: vi.fn(), findById: vi.fn(), countDocuments: vi.fn() }
 }));
 vi.mock('../src/models/Vote.js', () => ({
   VoteModel: { create: vi.fn(), findOne: vi.fn() }
@@ -159,6 +159,63 @@ describe("Security Requirements (15 mandatory tests)", () => {
       TeamModel.findOne = mockQuery(null);
       VoteModel.findOne = mockQuery(null);
       await expect(submitVote("g1", 1, "wrong_player", "t2")).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    });
+  });
+
+  describe("7. Eliminated Teams & Ability Validation", () => {
+    it("must reject eliminated teams from voting", async () => {
+      PlayerModel.findOne = mockQuery({ _id: "p1", gameId: "g1", teamId: "t1" });
+      TeamModel.findOne = mockQuery({ _id: "t1", gameId: "g1", eliminated: true });
+      await expect(submitVote("g1", 1, "p1", "t2")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+
+    it("must reject eliminated teams from using abilities", async () => {
+      PlayerModel.findOne = mockQuery({
+        _id: "p1", gameId: "g1", teamId: "t1", role: "INSPECTOR", effectiveState: "SPECIAL", abilityUnlocked: true,
+      });
+      TeamModel.findById = mockQuery({ _id: "t1", eliminated: true });
+      await expect(submitAbility("g1", 1, "p1", "t2")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+
+    it("must reject abilities that require a target when none is given", async () => {
+      PlayerModel.findOne = mockQuery({
+        _id: "p1", gameId: "g1", role: "SPECIAL_7", effectiveState: "SPECIAL", abilityUnlocked: true,
+      });
+      await expect(submitAbility("g1", 1, "p1")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    });
+
+    it("must reject unknown ability modes", async () => {
+      PlayerModel.findOne = mockQuery({
+        _id: "p1", gameId: "g1", role: "CORRUPTOR", effectiveState: "SPECIAL", abilityUnlocked: true,
+      });
+      await expect(submitAbility("g1", 1, "p1", "t2", "SABOTAGE" as any)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    });
+
+    it("must let WHISTLEBLOWER act without a target", async () => {
+      PlayerModel.findOne = mockQuery({
+        _id: "p1", gameId: "g1", role: "WHISTLEBLOWER", effectiveState: "SPECIAL", abilityUnlocked: true,
+      });
+      vi.mocked(ActionModel.create).mockResolvedValue({} as any);
+      await expect(submitAbility("g1", 1, "p1")).resolves.toBeUndefined();
+      expect(ActionModel.create).toHaveBeenCalledWith({
+        gameId: "g1",
+        round: 1,
+        playerId: "p1",
+        targetPlayerId: undefined,
+        mode: undefined,
+      });
+    });
+
+    it("must default CORRUPTOR mode to TRUST_DRAIN", async () => {
+      const actor = { _id: "p1", gameId: "g1", role: "CORRUPTOR", effectiveState: "SPECIAL", abilityUnlocked: true };
+      const target = { _id: "p2", gameId: "g1" };
+      PlayerModel.findOne = vi.fn((filter: any) => mockQuery(filter._id ? actor : target)(filter));
+      TeamModel.findOne = mockQuery({ _id: "t2", gameId: "g1", eliminated: false });
+      vi.mocked(ActionModel.create).mockResolvedValue({} as any);
+      await submitAbility("g1", 1, "p1", "t2");
+      expect(ActionModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: "TRUST_DRAIN", targetPlayerId: "p2" }),
+      );
     });
   });
 });

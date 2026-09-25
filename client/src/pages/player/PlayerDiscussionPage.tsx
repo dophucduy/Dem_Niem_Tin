@@ -6,7 +6,7 @@ import { Clue, PrivateResult } from "@dem-niem-tin/shared";
 
 export function PlayerDiscussionPage() {
   const navigate = useNavigate();
-  const { publicState, privateState, session, activeRole } = usePlayerGame();
+  const { publicState, privateState, session, activeRole, handleSendReaction, reactionCooldown } = usePlayerGame();
 
   const [isReady, setIsReady] = useState(false);
 
@@ -63,6 +63,8 @@ export function PlayerDiscussionPage() {
       privateResults={privateResults}
       onReadyToVote={handleReadyToVote}
       isReady={isReady}
+      onSendReaction={handleSendReaction}
+      reactionCooldown={reactionCooldown}
     />
   );
 }

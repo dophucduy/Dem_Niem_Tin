@@ -43,16 +43,16 @@ describe("GameEngine", () => {
 
   it("pauses and resumes a server deadline without losing remaining time", () => {
     const engine = new GameEngine();
-    expect(engine.startGame(1_000).phaseEndsAt).toBe(31_000);
+    expect(engine.startGame(1_000).phaseEndsAt).toBe(61_000);
 
     const paused = engine.pause(11_000);
-    expect(paused).toMatchObject({ paused: true, pausedRemainingMs: 20_000 });
+    expect(paused).toMatchObject({ paused: true, pausedRemainingMs: 50_000 });
     expect(paused.phaseEndsAt).toBeUndefined();
 
     const resumed = engine.resume(50_000);
-    expect(resumed).toMatchObject({ paused: false, phaseEndsAt: 70_000 });
-    expect(engine.tick(69_999).phase).toBe("ROLE_REVEAL");
-    expect(engine.tick(70_000)).toMatchObject({ phase: "NIGHT_KNOWLEDGE", round: 1 });
+    expect(resumed).toMatchObject({ paused: false, phaseEndsAt: 100_000 });
+    expect(engine.tick(99_999).phase).toBe("ROLE_REVEAL");
+    expect(engine.tick(100_000)).toMatchObject({ phase: "NIGHT_KNOWLEDGE", round: 1 });
   });
 
   it("restarts only the active round and clamps server-side Trust", () => {
@@ -83,7 +83,7 @@ describe("GameEngine", () => {
     const scheduler = new GameScheduler(engine, (state) => states.push(state.phase));
     scheduler.schedule();
 
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(60_000);
     expect(engine.snapshot).toMatchObject({ phase: "NIGHT_KNOWLEDGE", round: 1 });
     expect(states).toEqual(["NIGHT_KNOWLEDGE"]);
     scheduler.cancel();

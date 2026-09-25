@@ -1,19 +1,16 @@
 import React from "react";
 import { Role } from "@dem-niem-tin/shared";
 import { ROLE_DEFINITIONS } from "../../data/roleDefinitions";
-import { 
-  CheckCircle2, 
-  XCircle, 
-  Zap, 
-  Lock, 
-  RotateCcw, 
-  ArrowRight, 
-  BookOpen, 
-  ShieldAlert, 
+import {
+  CheckCircle2,
+  XCircle,
+  Zap,
+  Lock,
+  RotateCcw,
+  BookOpen,
   Sparkles,
-  HelpCircle 
+  Clock,
 } from "lucide-react";
-import { GameButton } from "../common/GameButton";
 
 interface AnswerResultViewProps {
   isCorrect: boolean;
@@ -22,19 +19,19 @@ interface AnswerResultViewProps {
   questionText?: string;
   correctOptionText?: string;
   explanation: string;
-  onProceed: () => void;
-  waitingForHost?: boolean;
 }
 
+/**
+ * Feedback screen shown after answering the night question. The game phase
+ * advances server-side once every team has answered, so both outcomes end in a
+ * waiting status instead of dead navigation buttons.
+ */
 export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
   isCorrect,
   role,
   roundNumber = 1,
-  questionText,
   correctOptionText,
   explanation,
-  onProceed,
-  waitingForHost = false,
 }) => {
   const roleInfo = ROLE_DEFINITIONS[role];
 
@@ -74,7 +71,7 @@ export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                  Quyền năng kích hoạt
+                  Năng lực kích hoạt
                 </div>
                 <div className="text-sm font-black text-white">
                   {roleInfo?.abilityName || "HÀNH ĐỘNG ĐẶC BIỆT"}
@@ -92,6 +89,18 @@ export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
           </p>
         </div>
 
+        {/* Waiting Status: the night advances server-side when all 8 teams answer */}
+        <div className="p-4 rounded-2xl bg-night-950/90 border border-amber-500/40 space-y-1.5 text-center">
+          <div className="flex items-center justify-center gap-2 text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
+            <Clock className="w-4 h-4 animate-spin" />
+            Đang chờ các đội còn lại hoàn thành
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Khi cả 8 đội nộp bài, đêm chuyển sang bước thi hành năng lực. Hãy nghiên cứu lại vai trò
+            của mình để chọn mục tiêu thật chuẩn!
+          </p>
+        </div>
+
         {/* Educational Explanation Box */}
         <div className="p-4 rounded-2xl bg-night-950/80 border border-night-700 space-y-2 text-left">
           <div className="flex items-center gap-2 text-xs font-bold text-trust-400 uppercase tracking-wider">
@@ -102,18 +111,6 @@ export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
             {explanation}
           </p>
         </div>
-
-        {/* Action Button */}
-        <GameButton
-          variant="righteous"
-          size="lg"
-          fullWidth
-          onClick={onProceed}
-          disabled={waitingForHost}
-          icon={<ArrowRight className="w-5 h-5" />}
-        >
-          {waitingForHost ? "CHỜ GIẢNG VIÊN" : "THỰC HIỆN HÀNH ĐỘNG"}
-        </GameButton>
       </div>
     );
   }
@@ -170,6 +167,18 @@ export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
         </div>
       </div>
 
+      {/* Waiting Status: the night advances server-side when all 8 teams answer */}
+      <div className="p-4 rounded-2xl bg-night-950/90 border border-amber-500/40 space-y-1.5 text-center">
+        <div className="flex items-center justify-center gap-2 text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
+          <Clock className="w-4 h-4 animate-spin" />
+          Đang chờ các đội còn lại hoàn thành
+        </div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          Đêm nay đội bạn quan sát với tư cách công dân tạm thời. Khi cả lớp nộp bài, màn hình sẽ tự
+          động chuyển sang bước quan sát.
+        </p>
+      </div>
+
       {/* Learning Knowledge Box (Show correct answer and explanation) */}
       <div className="p-4 rounded-2xl bg-night-950/80 border border-night-700 space-y-2 text-left">
         {correctOptionText && (
@@ -185,19 +194,6 @@ export const AnswerResultView: React.FC<AnswerResultViewProps> = ({
           {explanation}
         </p>
       </div>
-
-      {/* Action Button */}
-      <GameButton
-        variant="outline"
-        size="lg"
-        fullWidth
-        onClick={onProceed}
-        disabled={waitingForHost}
-        icon={<ArrowRight className="w-5 h-5" />}
-      >
-        {waitingForHost ? "CHỜ GIẢNG VIÊN" : "TIẾP TỤC"}
-      </GameButton>
     </div>
   );
 };
-

@@ -12,8 +12,11 @@ import type {
   LobbyState,
   PrivatePlayerState,
   PublicGameState,
+  ReactionSummary,
   ReconnectPayload,
   ReconnectResult,
+  SendReactionPayload,
+  SendReactionResult,
   SetReadyPayload,
   SetReadyResult,
   ResetGameResult,
@@ -31,6 +34,7 @@ export const CLIENT_EVENTS = {
   ANSWER_QUESTION: "question:answer",
   USE_ABILITY: "ability:use",
   SUBMIT_VOTE: "vote:submit",
+  SEND_REACTION: "reaction:send",
   HOST_RECONNECT: "host:reconnect",
   START_GAME: "host:start-game",
   PAUSE_GAME: "host:pause-game",
@@ -48,6 +52,7 @@ export const SERVER_EVENTS = {
   PUBLIC_STATE_UPDATED: "game:public-state",
   PRIVATE_STATE_UPDATED: "game:private-state",
   SESSION_REPLACED: "session:replaced",
+  REACTIONS_UPDATED: "reactions:updated",
   VALIDATION_ERROR: "error:validation",
   ROOM_CLOSED: "room:closed",
 } as const;
@@ -87,6 +92,10 @@ export interface ClientToServerEvents {
   [CLIENT_EVENTS.SUBMIT_VOTE]: (
     payload: SubmitVotePayload,
     acknowledge: (response: Ack<PlayerActionResult>) => void,
+  ) => void;
+  [CLIENT_EVENTS.SEND_REACTION]: (
+    payload: SendReactionPayload,
+    acknowledge: (response: Ack<SendReactionResult>) => void,
   ) => void;
   [CLIENT_EVENTS.HOST_RECONNECT]: (
     payload: HostAuthPayload,
@@ -132,6 +141,7 @@ export interface ServerToClientEvents {
   [SERVER_EVENTS.PUBLIC_STATE_UPDATED]: (payload: PublicGameState) => void;
   [SERVER_EVENTS.PRIVATE_STATE_UPDATED]: (payload: PrivatePlayerState) => void;
   [SERVER_EVENTS.SESSION_REPLACED]: (payload: { message: string }) => void;
+  [SERVER_EVENTS.REACTIONS_UPDATED]: (payload: ReactionSummary) => void;
   [SERVER_EVENTS.VALIDATION_ERROR]: (payload: { message: string }) => void;
   [SERVER_EVENTS.ROOM_CLOSED]: (payload: { message?: string }) => void;
 }

@@ -116,7 +116,7 @@ export class RoomService {
     roomCode: string;
     sessionToken: string;
     socketId: string;
-  }): Promise<PlayerSession & { lobby: LobbyState }> {
+  }): Promise<PlayerSession & { lobby: LobbyState; teamNumber?: number; displayName?: string }> {
     const room = await RoomModel.findOne({ roomCode: input.roomCode });
     if (!room) throw new ServiceError("ROOM_NOT_FOUND", "Room not found");
 
@@ -132,6 +132,9 @@ export class RoomService {
     player.socketId = input.socketId;
     await player.save();
 
+    // Fetch team info for socket identity
+    const team = await TeamModel.findById(player.teamId).lean() as (TeamDocument & { _id: Types.ObjectId }) | null;
+
     return {
       roomId: room._id.toString(),
       roomCode: room.roomCode,
@@ -139,6 +142,8 @@ export class RoomService {
       playerId: player._id.toString(),
       teamId: player.teamId.toString(),
       replacedSocketId,
+      teamNumber: team?.teamNumber,
+      displayName: team?.displayName,
       lobby: await this.getLobby(room._id),
     };
   }

@@ -8,13 +8,16 @@ import {
   Sparkles,
   ShieldCheck 
 } from "lucide-react";
-import { PublicQuestion } from "@dem-niem-tin/shared";
+import { Role, PublicQuestion } from "@dem-niem-tin/shared";
 import { GameButton } from "../common/GameButton";
+import { RoleQuickGuide } from "./RoleQuickGuide";
 
 interface NightQuestionViewProps {
   question: PublicQuestion;
   roundNumber?: number;
   abilityName?: string;
+  role?: Role;
+  myTeamNumber?: number;
   isSubmitted?: boolean;
   onSubmitAnswer: (selectedOption: number) => void;
   loading?: boolean;
@@ -24,6 +27,8 @@ export const NightQuestionView: React.FC<NightQuestionViewProps> = ({
   question,
   roundNumber = 1,
   abilityName = "ĐẶC BIỆT",
+  role,
+  myTeamNumber = 0,
   isSubmitted = false,
   onSubmitAnswer,
   loading = false,
@@ -60,6 +65,26 @@ export const NightQuestionView: React.FC<NightQuestionViewProps> = ({
           VÒNG TRI THỨC
         </span>
       </div>
+
+      {/* Unlock Rule: what this answer decides */}
+      <div className="glass-panel rounded-2xl p-4 border border-amber-500/40 space-y-2">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300 uppercase tracking-wider">
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          Trả lời đúng để mở khóa năng lực:
+          <span className="text-trust-300 normal-case">{abilityName}</span>
+        </div>
+        <p className="text-[11px] text-slate-300 leading-relaxed flex items-start gap-1.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+          <span>
+            Trả lời <strong className="text-white">sai</strong>: năng lực bị khóa trong đêm nay — đội
+            bạn quan sát với tư cách <strong className="text-amber-300">công dân tạm thời</strong>;
+            vai trò gốc vẫn được giữ nguyên và mở khóa lại vào đêm sau.
+          </span>
+        </p>
+      </div>
+
+      {/* Role reminder so nothing must be memorized */}
+      {role && <RoleQuickGuide role={role} myTeamNumber={myTeamNumber} />}
 
       {/* Main Question Card */}
       <form
@@ -131,7 +156,10 @@ export const NightQuestionView: React.FC<NightQuestionViewProps> = ({
               <CheckCircle2 className="w-5 h-5" />
               ĐÃ GỬI ĐÁP ÁN THÀNH CÔNG
             </div>
-            <p className="text-xs text-slate-400">Chờ các đội còn lại</p>
+            <p className="text-xs text-slate-400 flex items-center justify-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 animate-spin text-amber-400" />
+              Đang chờ các đội còn lại — màn hình tự chuyển khi đêm bước tiếp
+            </p>
           </div>
         ) : (
           <GameButton
@@ -151,4 +179,3 @@ export const NightQuestionView: React.FC<NightQuestionViewProps> = ({
     </div>
   );
 };
-

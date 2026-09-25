@@ -6,10 +6,24 @@ import {
   Clock, 
   ArrowRight, 
   ShieldAlert, 
-  Scale 
+  Scale,
+  BookOpen,
+  ChevronDown,
+  AlertTriangle,
 } from "lucide-react";
-import { PublicTeam } from "@dem-niem-tin/shared";
+import { PublicTeam, Role } from "@dem-niem-tin/shared";
 import { GameButton } from "../common/GameButton";
+import { ROLE_DEFINITIONS } from "../../data/roleDefinitions";
+
+const ROLE_REFERENCE_ORDER: Role[] = [
+  "INSPECTOR",
+  "LAW",
+  "WHISTLEBLOWER",
+  "OVERSIGHT",
+  "SPECIAL_6",
+  "SPECIAL_7",
+  "CORRUPTOR",
+];
 
 interface HostRoleRevealStageProps {
   teams: PublicTeam[];
@@ -26,7 +40,9 @@ export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
   phaseEndsAt,
   paused = false,
 }) => {
-  const connectedCount = teams.filter((t) => t.connected).length;
+  const readyCount = teams.filter((t) => t.ready).length;
+  const isAllReady = readyCount === teams.length && teams.length > 0;
+  const [showRoleReference, setShowRoleReference] = React.useState(false);
 
   const [secondsRemaining, setSecondsRemaining] = React.useState<number>(() => {
     if (!phaseEndsAt) return 30;
@@ -60,7 +76,7 @@ export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
         </h1>
 
         <p className="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto mb-6 leading-relaxed">
-          Người chơi đang mở niêm phong hồ sơ nhận vai trò trên thiết bị của mình.
+          Tất cả 8 đội đang mở niêm phong hồ sơ nhận vai trò trên thiết bị của mình.
           <br />
           <strong className="text-trust-400">
             Giữ bí mật tuyệt đối danh tính và quyền năng của đội bạn!
@@ -85,7 +101,7 @@ export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
               Tiến độ mở niêm phong:
             </span>
             <span className="font-mono font-bold text-lg text-trust-400 px-3 py-1 rounded-lg bg-night-900 border border-night-700">
-              {connectedCount} NGƯỜI ĐANG KẾT NỐI
+              {readyCount} / {teams.length || 8} ĐỘI ĐÃ SẴN SÀNG
             </span>
           </div>
 
@@ -105,12 +121,12 @@ export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
         </div>
       </div>
 
-      {/* Participants Status Grid (Host never sees secret roles) */}
+      {/* 8 Teams Status Grid (Host sees only Ready status, NEVER secret roles!) */}
       <div>
         <div className="flex items-center justify-between mb-4 px-2">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
             <EyeOff className="w-4 h-4 text-trust-400" />
-            Người tham gia
+            Trạng thái xác nhận
           </h2>
           <span className="text-xs text-slate-500 font-mono">
             Vai trò của các đội được giữ bí mật
@@ -124,7 +140,7 @@ export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
               className={`
                 p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between
                 ${
-                  team.connected
+                  team.ready
                     ? "bg-night-900/90 border-righteous-600/50 text-white shadow-sm"
                     : "bg-night-950/50 border-night-800 text-slate-400"
                 }
@@ -140,15 +156,15 @@ export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
               </div>
 
               <div className="shrink-0">
-                {team.connected ? (
+                {team.ready ? (
                   <div className="flex items-center gap-1 text-[11px] font-bold text-righteous-400">
                     <CheckCircle2 className="w-4 h-4 text-righteous-400" />
-                    <span>ĐANG KẾT NỐI</span>
+                    <span>SẴN SÀNG</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 text-[11px] text-amber-400/80">
                     <Clock className="w-3.5 h-3.5 animate-spin" />
-                    <span>MẤT KẾT NỐI</span>
+                    <span>ĐANG XEM</span>
                   </div>
                 )}
               </div>
@@ -157,11 +173,72 @@ export const HostRoleRevealStage: React.FC<HostRoleRevealStageProps> = ({
         </div>
       </div>
 
+      {/* Teacher Role Reference — public role catalog only, never reveals team assignments */}
+      <div className="glass-panel rounded-2xl border border-night-700 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowRoleReference((prev) => !prev)}
+          className="w-full flex items-center justify-between gap-3 px-6 py-4 text-left hover:bg-night-900/40 transition-colors"
+        >
+          <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-trust-300">
+            <BookOpen className="w-4 h-4 text-trust-400" />
+            Danh mục vai trò — dành cho giảng viên thuyết minh
+          </span>
+          <ChevronDown
+            className={`w-4 h-4 text-slate-400 transition-transform ${showRoleReference ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {showRoleReference && (
+          <div className="px-6 pb-6 space-y-3">
+            <p className="text-[11px] text-slate-500 font-mono">
+              Danh sách công khai toàn bộ 7 loại vai trò — không tiết lộ đội nào giữ vai trò nào.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {ROLE_REFERENCE_ORDER.map((roleKey) => {
+                const info = ROLE_DEFINITIONS[roleKey];
+                const isCorruption = info.faction === "CORRUPTION";
+                return (
+                  <div
+                    key={roleKey}
+                    className={`p-4 rounded-2xl border text-left space-y-1.5 ${
+                      isCorruption
+                        ? "bg-corruption-950/40 border-corruption-600/40"
+                        : "bg-justice-950/40 border-justice-600/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-sm font-black tracking-wide ${isCorruption ? "text-corruption-400" : "text-justice-300"}`}>
+                        {info.name}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase border ${
+                          isCorruption
+                            ? "bg-corruption-950 text-corruption-400 border-corruption-600/60"
+                            : "bg-justice-950 text-justice-300 border-justice-600/60"
+                        }`}
+                      >
+                        {isCorruption ? <AlertTriangle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+                        {isCorruption ? "Tham nhũng" : "Bảo vệ niềm tin"}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      {info.abilityName}
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">{info.abilityShortDesc}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Host Controls */}
       <div className="glass-panel rounded-2xl p-6 border border-night-700 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="text-xs text-slate-400 flex items-center gap-2">
           <Scale className="w-4 h-4 text-trust-400" />
-          Host bắt đầu đêm đầu tiên khi sẵn sàng.
+          Khi đủ 8 đội sẵn sàng, giảng viên bắt đầu đêm đầu tiên.
         </div>
 
         <GameButton

@@ -8,12 +8,17 @@ import {
   PublicQuestion,
   Role,
   Faction,
+  ReactionType,
+  ReactionSummary,
   Ack,
   SetReadyResult,
   AnswerQuestionResult,
-  PlayerActionResult 
+  PlayerActionResult,
+  SendReactionResult,
+  AbilityMode,
 } from "@dem-niem-tin/shared";
 import { socket } from "../services/socket";
+import { SAMPLE_QUESTIONS } from "../data/sampleQuestions";
 import { ROLE_DEFINITIONS } from "../data/roleDefinitions";
 
 const STORAGE_KEY = "dem_niem_tin_player_session";
@@ -34,13 +39,14 @@ export interface PlayerContextType {
   loading: boolean;
   errorMessage: string | null;
   setErrorMessage: (msg: string | null) => void;
-  handleJoin: (roomCode: string, displayName: string, onSuccess?: () => void) => void;
+  handleJoin: (roomCode: string, teamNumber: number, displayName?: string, onSuccess?: () => void) => void;
   handleLeaveRoom: () => void;
   handleConfirmReady: () => void;
   handleToggleReady: (ready?: boolean) => void;
   handleSubmitAnswer: (selectedOption: number, onResult?: (correct: boolean) => void) => void;
   handleExecuteAbility: (
     targetTeamNumber?: number,
+    mode?: AbilityMode,
     onSuccess?: () => void,
     onError?: (err: string) => void
   ) => void;
@@ -49,9 +55,13 @@ export interface PlayerContextType {
     onSuccess?: () => void,
     onError?: (err: string) => void
   ) => void;
-  activeRole: Role | undefined;
-  activeFaction: Faction | undefined;
-  activeQuestion: PublicQuestion | undefined;
+  handleSendReaction: (reaction: ReactionType) => void;
+  reactionCooldown: boolean;
+  activeRole: Role;
+  setActiveRole: (role: Role) => void;
+  activeFaction: Faction;
+  activeQuestion: PublicQuestion;
+  questionDetail: typeof SAMPLE_QUESTIONS[0];
   teams: any[];
 }
 
@@ -72,12 +82,34 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [privateState, setPrivateState] = useState<PrivatePlayerState | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeRole, setActiveRole] = useState<Role>("INSPECTOR");
+  const [reactionCooldown, setReactionCooldown] = useState(false);
+
+  // Initial empty teams: all 8 slots start unconnected and unready
+  const emptyTeams = Array.from({ length: 8 }, (_, i) => ({
+    id: `team-${i + 1}`,
+    teamNumber: i + 1,
+    displayName: undefined,
+    connected: false,
+    ready: false,
+    eliminated: false,
+  }));
+
+  const mockLobby: LobbyState = {
+    roomId: "room-default",
+    roomCode: session?.roomCode || "",
+    status: "LOBBY",
+    teams: emptyTeams as any,
+    connectedCount: 0,
+    capacity: 8,
+  };
 
   useEffect(() => {
     const handleLobbyUpdated = (updatedLobby: LobbyState) => setLobby(updatedLobby);
     const handlePublicState = (state: PublicGameState) => setPublicState(state);
     const handlePrivateState = (state: PrivatePlayerState) => {
       setPrivateState(state);
+      if (state.role) setActiveRole(state.role);
     };
 
     socket.on(SERVER_EVENTS.LOBBY_UPDATED, handleLobbyUpdated);
@@ -95,6 +127,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               setLobby(res.data.room);
               if (res.data.privateState) {
                 setPrivateState(res.data.privateState);
+                if (res.data.privateState.role) setActiveRole(res.data.privateState.role);
               }
               if (res.data.publicState) setPublicState(res.data.publicState);
             } else {
@@ -129,7 +162,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, [session]);
 
-  const handleJoin = (roomCode: string, displayName: string, onSuccess?: () => void) => {
+  const handleJoin = (
+    roomCode: string,
+    teamNumber: number,
+    displayName?: string,
+    onSuccess?: () => void
+  ) => {
     setLoading(true);
     setErrorMessage(null);
 
@@ -140,7 +178,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         CLIENT_EVENTS.JOIN_ROOM,
         {
           roomCode: cleanRoomCode,
-          displayName: displayName.trim(),
+          teamNumber,
+          displayName: displayName?.trim() || undefined,
         },
         (res: Ack<any>) => {
           setLoading(false);
@@ -148,7 +187,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const newSession: StoredSession = {
               roomCode: cleanRoomCode,
               sessionToken: res.data.sessionToken,
-              teamNumber: res.data.teamNumber,
+              teamNumber,
               playerId: res.data.playerId,
               teamId: res.data.teamId,
             };
@@ -217,11 +256,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const handleSubmitAnswer = (selectedOption: number, onResult?: (correct: boolean) => void) => {
-    const currentQ = publicState?.activeQuestion;
-    if (!currentQ) {
-      setErrorMessage("Chưa nhận được câu hỏi từ máy chủ.");
-      return;
-    }
+    const currentQ = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
     if (socket.connected && session) {
       setLoading(true);
       socket.emit(
@@ -247,6 +282,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const handleExecuteAbility = (
     targetTeamNumber?: number,
+    mode?: AbilityMode,
     onSuccess?: () => void,
     onError?: (err: string) => void
   ) => {
@@ -260,26 +296,35 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       targetTeamId = targetTeam?.id;
     }
 
+    if (targetTeamNumber !== undefined && !targetTeamId) {
+      const msg = "Không tìm thấy thông tin định danh của đội được chọn.";
+      setLoading(false);
+      setErrorMessage(msg);
+      onError?.(msg);
+      return;
+    }
+
     if (socket.connected && session) {
       socket.emit(
         CLIENT_EVENTS.USE_ABILITY,
         {
           targetTeamId,
+          mode,
         },
         (res: Ack<PlayerActionResult>) => {
           setLoading(false);
           if (res.ok) {
             onSuccess?.();
           } else {
-            const msg = res.error?.message || "Không thể thực thi quyền năng lúc này.";
+            const msg = res.error?.message || "Không thể thực thi năng lực lúc này.";
             setErrorMessage(msg);
             onError?.(msg);
           }
         }
       );
     } else {
+      const msg = "Mất kết nối máy chủ. Hành động đêm chưa được gửi đi.";
       setLoading(false);
-      const msg = "Mất kết nối máy chủ. Hành động chưa được gửi.";
       setErrorMessage(msg);
       onError?.(msg);
     }
@@ -321,17 +366,35 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       );
     } else {
+      const msg = "Mất kết nối máy chủ. Phiếu biểu quyết chưa được gửi đi.";
       setLoading(false);
-      const msg = "Mất kết nối máy chủ. Phiếu chưa được gửi.";
       setErrorMessage(msg);
       onError?.(msg);
     }
   };
 
-  const activeRole = privateState?.role;
-  const activeFaction = privateState?.faction;
-  const activeQuestion = publicState?.activeQuestion;
-  const teams = publicState?.teams ?? lobby?.teams ?? [];
+  const handleSendReaction = (reaction: ReactionType) => {
+    if (reactionCooldown) return;
+    if (socket.connected && session) {
+      setReactionCooldown(true);
+      socket.emit(
+        CLIENT_EVENTS.SEND_REACTION,
+        { reaction },
+        (res: Ack<SendReactionResult>) => {
+          if (!res.ok) {
+            // silently ignore rate-limit errors
+          }
+        }
+      );
+      // 3 second cooldown matching server rate-limit
+      setTimeout(() => setReactionCooldown(false), 3000);
+    }
+  };
+
+  const activeFaction: Faction = activeRole === "CORRUPTOR" ? "CORRUPTION" : "TRUST";
+  const activeQuestion: PublicQuestion = publicState?.activeQuestion || SAMPLE_QUESTIONS[0];
+  const questionDetail = SAMPLE_QUESTIONS.find(q => q.id === activeQuestion.id) || SAMPLE_QUESTIONS[0];
+  const teams = publicState?.teams || lobby?.teams || emptyTeams;
 
   return (
     <PlayerContext.Provider
@@ -350,9 +413,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         handleSubmitAnswer,
         handleExecuteAbility,
         handleSubmitVote,
+        handleSendReaction,
+        reactionCooldown,
         activeRole,
+        setActiveRole,
         activeFaction,
         activeQuestion,
+        questionDetail,
         teams,
       }}
     >

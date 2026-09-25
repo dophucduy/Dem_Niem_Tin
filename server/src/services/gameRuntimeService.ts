@@ -98,7 +98,8 @@ export class GameRuntimeService {
   async getPrivateState(roomId: string, playerId: string): Promise<PrivatePlayerState | undefined> {
     const player = await PlayerModel.findOne({ _id: playerId, roomId }).lean();
     if (!player) throw new ServiceError("UNAUTHORIZED", "Player session is invalid");
-    return (await getPrivatePlayerState(playerId)) ?? undefined;
+    const game = await GameModel.findOne({ roomId, status: "ACTIVE" }).select("round").lean();
+    return (await getPrivatePlayerState(playerId, game?.round)) ?? undefined;
   }
 
   async answerQuestion(
@@ -137,7 +138,7 @@ export class GameRuntimeService {
     const runtime = await this.requireRuntimePhase(roomId, "NIGHT_ABILITY");
     const game = await GameModel.findOne({ roomId, status: "ACTIVE" }).select("_id").lean();
     if (!game) throw new ServiceError("INVALID_PHASE", "Active game was not found");
-    await submitAbility(game._id.toString(), runtime.engine.snapshot.round, playerId, payload.targetTeamId);
+    await submitAbility(game._id.toString(), runtime.engine.snapshot.round, playerId, payload.targetTeamId, payload.mode);
   }
 
   async submitVote(roomId: string, playerId: string, payload: SubmitVotePayload): Promise<void> {
@@ -396,11 +397,12 @@ export class GameRuntimeService {
         }),
       ),
       publicEvents: (game?.publicEvents ?? []).map(
-        (event: PublicGameEvent): PublicGameEvent => ({
+        (event): PublicGameEvent => ({
           id: event.id,
           type: event.type,
           message: event.message,
           timestamp: event.timestamp,
+          data: event.data ?? undefined,
         }),
       ),
     };

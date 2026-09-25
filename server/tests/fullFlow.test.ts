@@ -1,9 +1,11 @@
 import mongoose from "mongoose";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import type { Role } from "@dem-niem-tin/shared";
 import { GameModel, PlayerModel, QuestionModel, RoomModel, TeamModel } from "../src/models/index.js";
 import { GameRuntimeService } from "../src/services/gameRuntimeService.js";
 import { RoomService } from "../src/services/roomService.js";
 import { assignRoles } from "../src/services/roleService.js";
+import { TARGET_REQUIRED_ROLES } from "../src/services/abilityService.js";
 
 const runDatabaseTests = process.env.RUN_DB_INTEGRATION === "true";
 const describeDatabase = runDatabaseTests ? describe : describe.skip;
@@ -89,13 +91,27 @@ describeDatabase("Full Game Flow (1 Host + 8 Players)", () => {
       const postAnswerState = await GameModel.findOne({ roomId: created.roomId }).lean();
       expect(postAnswerState?.phase).toBe("NIGHT_ABILITY");
 
-      // 5. Night Ability Phase: Players use abilities (or skip)
+      // 5. Night Ability Phase: every active team submits its ability (targets where required)
       for (const p of players) {
-        // Just send empty target to pass the phase
-        await runtimeService.useAbility(created.roomId, p.playerId, { targetTeamId: undefined });
+        const team = await TeamModel.findOne({ gameId: game!._id, _id: p.teamId }).lean();
+        if (!team || team.eliminated) continue; // eliminated teams are spectators
+        const player = await PlayerModel.findById(p.playerId).select("+role").lean();
+        const role = player?.role as Role | undefined;
+        let targetTeamId: string | undefined;
+        if (role && TARGET_REQUIRED_ROLES.includes(role)) {
+          const abilityTarget = await TeamModel.findOne({
+            gameId: game!._id,
+            eliminated: false,
+            teamNumber: { $ne: team.teamNumber },
+          }).lean();
+          expect(abilityTarget).not.toBeNull();
+          targetTeamId = abilityTarget!._id.toString();
+        }
+        await runtimeService.useAbility(created.roomId, p.playerId, { targetTeamId });
       }
 
-      // Phase should auto advance to NIGHT_RESOLUTION
+      // Host skips the remaining ability time: NIGHT_ABILITY -> NIGHT_RESOLUTION
+      await runtimeService.skipTimer(created.roomId);
       const postAbilityState = await GameModel.findOne({ roomId: created.roomId }).lean();
       expect(postAbilityState?.phase).toBe("NIGHT_RESOLUTION");
 
@@ -107,9 +123,14 @@ describeDatabase("Full Game Flow (1 Host + 8 Players)", () => {
       const votePhaseState = await GameModel.findOne({ roomId: created.roomId }).lean();
       expect(votePhaseState?.phase).toBe("VOTING");
 
-      // 6. Voting Phase
-      // We will have all players vote for team 2
-      const targetTeam = await TeamModel.findOne({ gameId: game!._id, teamNumber: 2 }).lean();
+      // 6. Voting Phase — each round eliminates the next team (2, 3, 4)
+      const targetTeamNumber = round + 1;
+      const targetTeam = await TeamModel.findOne({
+        gameId: game!._id,
+        teamNumber: targetTeamNumber,
+        eliminated: false,
+      }).lean();
+      expect(targetTeam).not.toBeNull();
       
       let votesCount = 0;
       for (const p of players) {

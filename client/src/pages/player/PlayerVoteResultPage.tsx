@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlayerGame } from "../../context/PlayerContext";
 import { VoteResultView } from "../../components/player/VoteResultView";
+import { extractVoteDetails } from "../../utils/voteResult";
 
 export function PlayerVoteResultPage() {
   const navigate = useNavigate();
@@ -9,27 +10,16 @@ export function PlayerVoteResultPage() {
 
   const round = publicState?.round || 1;
   const trust = publicState?.trust ?? 100;
-  const myTeamNumber = session?.teamNumber || 4;
+  const myTeamNumber = session?.teamNumber ?? 0;
 
   const myTeam = teams.find((t) => t.teamNumber === myTeamNumber);
   const isMyTeamEliminated = myTeam?.eliminated ?? false;
 
-  const voteData = useMemo(() => {
-    if (!publicState?.publicEvents) return undefined;
-
-    const voteEvent = [...publicState.publicEvents]
-      .reverse()
-      .find((ev) => ev.type === "ELIMINATION" || ev.type === "VOTE_TIE");
-
-    if (!voteEvent) return undefined;
-
-    try {
-      const parsed = JSON.parse(voteEvent.message);
-      return parsed;
-    } catch {
-      return undefined;
-    }
-  }, [publicState?.publicEvents, teams, round]);
+  // Structured VOTE_RESULT event published by the server; no fabricated fallback.
+  const voteDetails = useMemo(
+    () => extractVoteDetails(publicState?.publicEvents, round),
+    [publicState?.publicEvents, round]
+  );
 
   // Phase Guard: When server moves to NIGHT or FINAL, auto-advance
   useEffect(() => {
@@ -55,14 +45,8 @@ export function PlayerVoteResultPage() {
       round={round}
       myTeamNumber={myTeamNumber}
       isMyTeamEliminated={isMyTeamEliminated}
-      eliminatedTeamNumber={voteData?.eliminatedTeamNumber}
-      eliminatedTeamName={voteData?.eliminatedTeamName}
-      votesReceived={voteData?.votesReceived}
-      faction={voteData?.faction}
-      trustDelta={voteData?.trustDelta}
-      isTie={voteData?.isTie}
+      details={voteDetails}
       trust={trust}
-      voteDistribution={voteData?.voteDistribution}
     />
   );
 }

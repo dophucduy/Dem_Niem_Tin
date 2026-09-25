@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { PublicTeam, Clue } from "@dem-niem-tin/shared";
+import React, { useState, useEffect } from "react";
+import { PublicTeam, Clue, ReactionSummary, TeamReaction, SERVER_EVENTS } from "@dem-niem-tin/shared";
 import { TrustMeter } from "../common/TrustMeter";
 import { PhaseTimer } from "../common/PhaseTimer";
 import { GameButton } from "../common/GameButton";
+import { socket } from "../../services/socket";
 import { 
   MessageSquare, 
   Mic, 
@@ -17,7 +18,9 @@ import {
   Volume2, 
   Shuffle, 
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  BarChart3,
+  Zap,
 } from "lucide-react";
 
 interface HostDiscussionStageProps {
@@ -33,6 +36,13 @@ interface HostDiscussionStageProps {
   loading?: boolean;
 }
 
+const REACTION_META: Record<string, { emoji: string; label: string; color: string; bgColor: string; borderColor: string }> = {
+  AGREE:    { emoji: "👍", label: "Đồng ý",   color: "text-emerald-300", bgColor: "bg-emerald-950/60", borderColor: "border-emerald-500/40" },
+  SUSPECT:  { emoji: "🔍", label: "Nghi ngờ",  color: "text-amber-300",   bgColor: "bg-amber-950/60",   borderColor: "border-amber-500/40" },
+  OBJECT:   { emoji: "✋", label: "Phản đối",  color: "text-red-300",     bgColor: "bg-red-950/60",     borderColor: "border-red-500/40" },
+  QUESTION: { emoji: "❓", label: "Hỏi thêm", color: "text-blue-300",    bgColor: "bg-blue-950/60",    borderColor: "border-blue-500/40" },
+};
+
 export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
   round,
   trust,
@@ -46,6 +56,23 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
   loading = false,
 }) => {
   const [selectedSpeakerId, setSelectedSpeakerId] = useState<string | null>(null);
+  const [reactionSummary, setReactionSummary] = useState<ReactionSummary>({
+    AGREE: 0, SUSPECT: 0, OBJECT: 0, QUESTION: 0, reactions: [],
+  });
+  const [recentReactions, setRecentReactions] = useState<TeamReaction[]>([]);
+
+  // Listen for live reactions from server
+  useEffect(() => {
+    const handleReactions = (summary: ReactionSummary) => {
+      setReactionSummary(summary);
+      // Show only the last 6 reactions for the "recent" feed
+      setRecentReactions(summary.reactions.slice(-6).reverse());
+    };
+    socket.on(SERVER_EVENTS.REACTIONS_UPDATED, handleReactions);
+    return () => {
+      socket.off(SERVER_EVENTS.REACTIONS_UPDATED, handleReactions);
+    };
+  }, []);
 
   const displayTeams = teams;
 
@@ -59,6 +86,8 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
       setSelectedSpeakerId(rand.id);
     }
   };
+
+  const totalReactions = reactionSummary.AGREE + reactionSummary.SUSPECT + reactionSummary.OBJECT + reactionSummary.QUESTION;
 
   return (
     <div className="w-full min-h-[92vh] flex flex-col justify-between p-6 lg:p-8 space-y-6 animate-fade-in text-white">
@@ -105,7 +134,7 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
         </div>
       </div>
 
-      {/* 2. MAIN CENTER ARENA: Active Speaker Spotlight & Evidence Dossier Board */}
+      {/* 2. MAIN CENTER ARENA */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
         {/* Left Column: Speaker Spotlight & Evidence Dossier (7 cols) */}
         <div className="lg:col-span-7 flex flex-col space-y-5">
@@ -177,6 +206,73 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
             )}
           </div>
 
+          {/* ── LIVE REACTION DASHBOARD ── */}
+          <div className="glass-panel rounded-3xl p-5 lg:p-6 border border-night-700/80 space-y-4">
+            <div className="flex items-center justify-between border-b border-night-700/80 pb-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-400" />
+                PHẢN ỨNG TRỰC TIẾP TỪ 8 ĐỘI
+              </h3>
+              <span className="text-[11px] font-mono text-slate-400">
+                {totalReactions} phản ứng
+              </span>
+            </div>
+
+            {/* Reaction Counts */}
+            <div className="grid grid-cols-4 gap-3">
+              {(["AGREE", "SUSPECT", "OBJECT", "QUESTION"] as const).map((type) => {
+                const meta = REACTION_META[type];
+                const count = reactionSummary[type];
+                return (
+                  <div
+                    key={type}
+                    className={`p-3 rounded-2xl border text-center transition-all ${
+                      count > 0
+                        ? `${meta.bgColor} ${meta.borderColor} shadow-sm`
+                        : "bg-night-950/60 border-night-800"
+                    }`}
+                  >
+                    <div className="text-2xl mb-1">{meta.emoji}</div>
+                    <div className={`text-xl font-black font-mono ${count > 0 ? meta.color : "text-slate-600"}`}>
+                      {count}
+                    </div>
+                    <div className={`text-[10px] font-bold uppercase tracking-wider ${count > 0 ? meta.color : "text-slate-500"}`}>
+                      {meta.label}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Recent Reactions Feed */}
+            {recentReactions.length > 0 && (
+              <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
+                {recentReactions.map((r, i) => {
+                  const meta = REACTION_META[r.reaction];
+                  return (
+                    <div
+                      key={`${r.teamNumber}-${r.timestamp}-${i}`}
+                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-night-950/60 border border-night-800 text-xs animate-fade-in"
+                    >
+                      <span className="text-base">{meta.emoji}</span>
+                      <span className="font-bold text-white">Đội {r.teamNumber}</span>
+                      <span className={`${meta.color} font-semibold`}>{meta.label}</span>
+                      <span className="ml-auto text-[9px] font-mono text-slate-500">
+                        {new Date(r.timestamp).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {totalReactions === 0 && (
+              <div className="text-center py-3 text-xs text-slate-500 italic">
+                Chưa có phản ứng nào từ các đội. Phản ứng sẽ hiển thị trực tiếp tại đây khi đội bấm nút.
+              </div>
+            )}
+          </div>
+
           {/* Evidence Dossier Board */}
           <div className="glass-panel rounded-3xl p-5 lg:p-6 border border-night-700/80 flex-1 flex flex-col space-y-3">
             <div className="flex items-center justify-between border-b border-night-700/80 pb-3">
@@ -198,15 +294,15 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
                 publicClues.map((clue, idx) => (
                   <div
                     key={clue.id || idx}
-                    className="p-4 rounded-2xl bg-night-950/80 border border-night-700 space-y-1.5 transition-all hover:border-trust-500/50"
+                    className="p-4 rounded-2xl bg-night-950/80 border border-night-700 space-y-2 transition-all hover:border-trust-500/50"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-bold text-white flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-amber-400" />
                         {clue.title}
                       </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-night-800 border border-night-700 text-slate-300">
-                        Tài liệu #{idx + 1}
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-night-800 border border-night-700 text-amber-300">
+                        HỒ SƠ #{idx + 1}
                       </span>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed font-sans">
@@ -238,6 +334,9 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
           <div className="grid grid-cols-2 gap-3 flex-1">
             {displayTeams.map((team) => {
               const isSpeaking = activeSpeaker?.id === team.id;
+              // Find this team's most recent reaction
+              const teamReaction = recentReactions.find(r => r.teamNumber === team.teamNumber);
+              const reactionEmoji = teamReaction ? REACTION_META[teamReaction.reaction]?.emoji : null;
               return (
                 <div
                   key={team.id}
@@ -254,14 +353,22 @@ export const HostDiscussionStage: React.FC<HostDiscussionStageProps> = ({
                       0{team.teamNumber}
                     </div>
 
-                    {isSpeaking ? (
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500 text-night-950 flex items-center gap-1">
-                        <Mic className="w-3 h-3 animate-pulse" />
-                        ĐANG NÓI
-                      </span>
-                    ) : (
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" title="Online" />
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {/* Show most recent reaction emoji */}
+                      {reactionEmoji && (
+                        <span className="text-base animate-bounce" title="Phản ứng gần nhất">
+                          {reactionEmoji}
+                        </span>
+                      )}
+                      {isSpeaking ? (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500 text-night-950 flex items-center gap-1">
+                          <Mic className="w-3 h-3 animate-pulse" />
+                          ĐANG NÓI
+                        </span>
+                      ) : (
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" title="Online" />
+                      )}
+                    </div>
                   </div>
 
                   <div className="pt-3">

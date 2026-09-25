@@ -33,9 +33,28 @@ export type Faction = "CORRUPTION" | "TRUST";
 
 export type EffectiveState = "SPECIAL" | "CITIZEN";
 
+export type AbilityMode = "TRUST_DRAIN" | "INTERFERE";
+
 export type QuestionDifficulty = "easy" | "medium" | "hard";
 
 export type ClueVisibility = "public" | "private";
+
+export type ReactionType = "AGREE" | "SUSPECT" | "OBJECT" | "QUESTION";
+
+export type TeamReaction = {
+  teamNumber: number;
+  displayName: string;
+  reaction: ReactionType;
+  timestamp: number;
+};
+
+export type ReactionSummary = {
+  AGREE: number;
+  SUSPECT: number;
+  OBJECT: number;
+  QUESTION: number;
+  reactions: TeamReaction[];
+};
 
 export type PublicTeam = {
   id: string;
@@ -67,6 +86,8 @@ export type PublicGameEvent = {
   type: string;
   message: string;
   timestamp: number;
+  /** Optional JSON payload for structured events (e.g. VOTE_RESULT details). */
+  data?: string;
 };
 
 export type LobbyState = {
@@ -97,11 +118,19 @@ export type PublicGameState = {
   factionWin?: Faction | "DRAW";
 };
 
+export type PrivateResultOutcome = "SUSPICIOUS" | "CLEAR" | "SUCCESS" | "BLOCKED" | "INFO";
+
 export type PrivateResult = {
   id: string;
   type: string;
   message: string;
   createdAt: number;
+  /** Structured fields (present on results resolved after the clarity fix; legacy entries omit them). */
+  outcome?: PrivateResultOutcome;
+  title?: string;
+  /** Round in which the result was produced, used to scope results to the current round. */
+  round?: number;
+  targetTeamNumber?: number;
 };
 
 export type PrivatePlayerState = {
@@ -112,6 +141,8 @@ export type PrivatePlayerState = {
   abilityUnlocked: boolean;
   effectiveState: EffectiveState;
   privateResults: PrivateResult[];
+  /** Refresh-safe flag telling whether this player already submitted a night action this round. */
+  hasActedThisRound: boolean;
 };
 
 export type ApiErrorCode =
@@ -191,10 +222,38 @@ export type AnswerQuestionResult = {
 
 export type UseAbilityPayload = {
   targetTeamId?: string;
+  mode?: AbilityMode;
+};
+
+export type SendReactionPayload = {
+  reaction: ReactionType;
+};
+
+export type SendReactionResult = {
+  accepted: true;
 };
 
 export type SubmitVotePayload = {
   targetTeamId: string;
+};
+
+export type VoteDistributionEntry = {
+  teamNumber: number;
+  displayName: string;
+  votes: number;
+};
+
+/** Structured payload of the public VOTE_RESULT event (serialized into PublicGameEvent.data). */
+export type VoteResultDetails = {
+  round: number;
+  isTie: boolean;
+  votesReceived: number;
+  voteDistribution: VoteDistributionEntry[];
+  eliminatedTeamNumber?: number;
+  eliminatedTeamName?: string;
+  faction?: Faction;
+  role?: Role;
+  trustDelta: number;
 };
 
 export type PlayerActionResult = {

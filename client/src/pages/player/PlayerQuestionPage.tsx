@@ -6,9 +6,9 @@ import { ROLE_DEFINITIONS } from "../../data/roleDefinitions";
 
 export function PlayerQuestionPage() {
   const navigate = useNavigate();
-  const { session, activeQuestion, activeRole, publicState, loading, handleSubmitAnswer } = usePlayerGame();
+  const { session, activeQuestion, activeRole, publicState, privateState, loading, handleSubmitAnswer } = usePlayerGame();
 
-  const roleInfo = activeRole ? ROLE_DEFINITIONS[activeRole] : undefined;
+  const roleInfo = ROLE_DEFINITIONS[activeRole];
 
   // Phase Guard: ensure room is in NIGHT phase
   React.useEffect(() => {
@@ -25,19 +25,17 @@ export function PlayerQuestionPage() {
 
   const onSubmit = (selectedIdx: number) => {
     handleSubmitAnswer(selectedIdx, (isCorrect: boolean) => {
-      navigate("/player/night/result");
+      navigate(`/player/night/result?correct=${isCorrect}&answer=${selectedIdx}`);
     });
   };
-
-  if (!activeQuestion || !activeRole) {
-    return <div className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-night-900 p-6 text-center text-amber-200">Đang chờ máy chủ gửi dữ liệu lượt chơi.</div>;
-  }
 
   return (
     <NightQuestionView
       question={activeQuestion}
       roundNumber={publicState?.round || 1}
       abilityName={roleInfo?.abilityName || "ĐIỀU TRA BÍ MẬT"}
+      role={privateState?.role ?? activeRole}
+      myTeamNumber={session?.teamNumber ?? 0}
       onSubmitAnswer={onSubmit}
       loading={loading}
     />

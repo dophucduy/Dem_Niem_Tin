@@ -20,6 +20,8 @@ export type SocketIdentity = {
   clientType?: "HOST" | "PLAYER";
   roomId?: string;
   playerId?: string;
+  teamNumber?: number;
+  displayName?: string;
 };
 
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketIdentity>;
@@ -63,7 +65,7 @@ export function registerLobbyHandlers(
 
     try {
       const joined = await roomService.joinRoom({ ...parsed.data, socketId: socket.id });
-      socket.data = { clientType: "PLAYER", roomId: joined.roomId, playerId: joined.playerId };
+      socket.data = { clientType: "PLAYER", roomId: joined.roomId, playerId: joined.playerId, teamNumber: parsed.data.teamNumber, displayName: parsed.data.displayName || `Đội ${parsed.data.teamNumber}` };
       await socket.join(roomChannel(joined.roomId));
       acknowledge({
         ok: true,
@@ -99,6 +101,8 @@ export function registerLobbyHandlers(
         clientType: "PLAYER",
         roomId: reconnected.roomId,
         playerId: reconnected.playerId,
+        teamNumber: reconnected.teamNumber,
+        displayName: reconnected.displayName,
       };
       await socket.join(roomChannel(reconnected.roomId));
       const [privateState, publicState] = await Promise.all([

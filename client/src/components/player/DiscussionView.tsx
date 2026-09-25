@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Role, Clue, PrivateResult } from "@dem-niem-tin/shared";
+import { Role, Clue, PrivateResult, ReactionType } from "@dem-niem-tin/shared";
 import { ROLE_DEFINITIONS } from "../../data/roleDefinitions";
 import { PhaseTimer } from "../common/PhaseTimer";
 import { GameButton } from "../common/GameButton";
@@ -31,7 +31,16 @@ interface DiscussionViewProps {
   privateResults: PrivateResult[];
   onReadyToVote?: () => void;
   isReady?: boolean;
+  onSendReaction?: (reaction: ReactionType) => void;
+  reactionCooldown?: boolean;
 }
+
+const REACTION_BUTTONS: { type: ReactionType; emoji: string; label: string; color: string; activeClasses: string }[] = [
+  { type: "AGREE",    emoji: "👍", label: "Đồng ý",   color: "text-emerald-300", activeClasses: "bg-emerald-950/60 border-emerald-500/50 shadow-emerald-500/20" },
+  { type: "SUSPECT",  emoji: "🔍", label: "Nghi ngờ",  color: "text-amber-300",   activeClasses: "bg-amber-950/60 border-amber-500/50 shadow-amber-500/20" },
+  { type: "OBJECT",   emoji: "✋", label: "Phản đối",  color: "text-red-300",     activeClasses: "bg-red-950/60 border-red-500/50 shadow-red-500/20" },
+  { type: "QUESTION", emoji: "❓", label: "Hỏi thêm", color: "text-blue-300",    activeClasses: "bg-blue-950/60 border-blue-500/50 shadow-blue-500/20" },
+];
 
 export const DiscussionView: React.FC<DiscussionViewProps> = ({
   round,
@@ -44,9 +53,12 @@ export const DiscussionView: React.FC<DiscussionViewProps> = ({
   privateResults,
   onReadyToVote,
   isReady = false,
+  onSendReaction,
+  reactionCooldown = false,
 }) => {
   const [activeTab, setActiveTab] = useState<"tactics" | "clues" | "questions">("tactics");
   const [copiedQuestion, setCopiedQuestion] = useState<string | null>(null);
+  const [lastReactionSent, setLastReactionSent] = useState<ReactionType | null>(null);
 
   const roleInfo = role ? ROLE_DEFINITIONS[role] : null;
   const isCorruptor = role === "CORRUPTOR";
@@ -89,6 +101,13 @@ export const DiscussionView: React.FC<DiscussionViewProps> = ({
     setTimeout(() => setCopiedQuestion(null), 2500);
   };
 
+  const handleReaction = (reaction: ReactionType) => {
+    if (reactionCooldown) return;
+    setLastReactionSent(reaction);
+    onSendReaction?.(reaction);
+    setTimeout(() => setLastReactionSent(null), 3000);
+  };
+
   return (
     <div className="w-full max-w-md mx-auto space-y-4 animate-fade-in pb-4">
       {/* Top Header: Phase & Countdown Timer */}
@@ -117,6 +136,46 @@ export const DiscussionView: React.FC<DiscussionViewProps> = ({
           </div>
 
           <PhaseTimer phaseEndsAt={phaseEndsAt} paused={paused} size="md" />
+        </div>
+      </div>
+
+      {/* ── REACTION BAR ── */}
+      <div className="glass-panel rounded-2xl p-3 border border-night-700 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            ⚡ Biểu quyết nhanh
+          </span>
+          {reactionCooldown && (
+            <span className="text-[9px] text-slate-500 font-mono animate-pulse">
+              Chờ 3s...
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {REACTION_BUTTONS.map((btn) => {
+            const isActive = lastReactionSent === btn.type;
+            return (
+              <button
+                key={btn.type}
+                onClick={() => handleReaction(btn.type)}
+                disabled={reactionCooldown}
+                className={`
+                  flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border transition-all duration-200
+                  ${isActive
+                    ? `${btn.activeClasses} scale-95 shadow-lg`
+                    : reactionCooldown
+                      ? "bg-night-950/40 border-night-800 opacity-40 cursor-not-allowed"
+                      : "bg-night-950/60 border-night-800 hover:border-night-600 active:scale-90 cursor-pointer"
+                  }
+                `}
+              >
+                <span className="text-xl leading-none">{btn.emoji}</span>
+                <span className={`text-[10px] font-bold ${isActive ? btn.color : "text-slate-400"}`}>
+                  {btn.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -369,4 +428,3 @@ export const DiscussionView: React.FC<DiscussionViewProps> = ({
     </div>
   );
 };
-

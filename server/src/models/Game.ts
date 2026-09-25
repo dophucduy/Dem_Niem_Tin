@@ -49,6 +49,7 @@ const gameSchema = new Schema(
           type: { type: String, required: true },
           message: { type: String, required: true },
           timestamp: { type: Number, required: true },
+          data: { type: String },
         },
       ],
       default: [],

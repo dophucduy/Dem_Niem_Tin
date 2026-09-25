@@ -3,27 +3,21 @@ import { GameModel } from "../models/Game.js";
 import { PlayerModel } from "../models/Player.js";
 import { TeamModel } from "../models/Team.js";
 import { Types } from "mongoose";
+import type { VoteDistributionEntry, VoteResultDetails } from "@dem-niem-tin/shared";
 import { ServiceError } from "./errors.js";
-
-export type VoteTallyResult = {
-  trustDelta: number;
-  eliminatedTeamId?: string;
-};
 
 export async function submitVote(gameId: string, round: number, voterId: string, targetTeamId: string): Promise<void> {
   const voter = await PlayerModel.findOne({ _id: voterId, gameId }).lean();
   if (!voter) throw new ServiceError("UNAUTHORIZED", "Player is not part of this game");
 
-  const [voterTeam, targetTeam, target] = await Promise.all([
-    TeamModel.findOne({ _id: voter.teamId, gameId, eliminated: false }).lean(),
+  const voterTeam = voter.teamId ? await TeamModel.findOne({ _id: voter.teamId, gameId }).lean() : null;
+  if (voterTeam?.eliminated) throw new ServiceError("FORBIDDEN", "Eliminated teams cannot vote");
+
+  const [target, targetTeam] = await Promise.all([
+    PlayerModel.findOne({ gameId, teamId: targetTeamId }).lean(),
     TeamModel.findOne({ _id: targetTeamId, gameId, eliminated: false }).lean(),
-    PlayerModel.findOne({ gameId, teamId: targetTeamId }).select("_id teamId").lean(),
   ]);
-  if (!voterTeam) throw new ServiceError("UNAUTHORIZED", "Eliminated players cannot vote");
   if (!target || !targetTeam) throw new ServiceError("VALIDATION_ERROR", "Vote target is invalid");
-  if (voter.teamId.toString() === targetTeamId) {
-    throw new ServiceError("VALIDATION_ERROR", "Players cannot vote for their own team");
-  }
   try {
     await VoteModel.create({ gameId, round, voterId, targetId: target._id });
   } catch (error) {
@@ -34,82 +28,114 @@ export async function submitVote(gameId: string, round: number, voterId: string,
   }
 }
 
-export async function tallyVotes(gameId: string, round: number): Promise<VoteTallyResult> {
+/** Resolves vote targets to public team info for the structured result payload. */
+async function resolveVoteTargets(gameId: string, voteCounts: Record<string, number>) {
+  const targetIds = Object.keys(voteCounts);
+  const [players, teams] = await Promise.all([
+    PlayerModel.find({ _id: { $in: targetIds } }).lean(),
+    TeamModel.find({ gameId }).lean(),
+  ]);
+
+  const byPlayerId = new Map<string, { teamNumber: number; displayName: string }>();
+  for (const player of players ?? []) {
+    const team = (teams ?? []).find((candidate) => candidate._id.toString() === player.teamId.toString());
+    if (team) {
+      byPlayerId.set(player._id.toString(), {
+        teamNumber: team.teamNumber,
+        displayName: team.displayName,
+      });
+    }
+  }
+
+  const voteDistribution: VoteDistributionEntry[] = targetIds
+    .map((targetId) => ({
+      teamNumber: byPlayerId.get(targetId)?.teamNumber ?? 0,
+      displayName: byPlayerId.get(targetId)?.displayName ?? "",
+      votes: voteCounts[targetId] ?? 0,
+    }))
+    .sort((a, b) => b.votes - a.votes);
+
+  return { byPlayerId, voteDistribution };
+}
+
+export async function tallyVotes(gameId: string, round: number): Promise<number> {
   const votes = await VoteModel.find({ gameId, round }).exec();
-  if (votes.length === 0) return { trustDelta: 0 };
-
-  const game = await GameModel.findById(gameId).exec();
-  if (!game) return { trustDelta: 0 };
-
-  const activeTeams = await TeamModel.find({ gameId, eliminated: false }).select("_id teamNumber displayName").lean();
-  const activeTeamById = new Map(activeTeams.map((team) => [team._id.toString(), team]));
-  const activePlayers = await PlayerModel.find({ gameId, teamId: { $in: activeTeams.map((team) => team._id) } })
-    .select("_id teamId +faction")
-    .lean();
-  const activePlayerById = new Map(activePlayers.map((player) => [player._id.toString(), player]));
+  if (votes.length === 0) return 0;
 
   const voteCounts: Record<string, number> = {};
   for (const vote of votes) {
-    const voter = activePlayerById.get(vote.voterId.toString());
-    const target = activePlayerById.get(vote.targetId.toString());
-    if (!voter || !target || voter.teamId.toString() === target.teamId.toString()) continue;
-    const teamId = target.teamId.toString();
-    voteCounts[teamId] = (voteCounts[teamId] || 0) + 1;
+    const tId = vote.targetId.toString();
+    voteCounts[tId] = (voteCounts[tId] || 0) + 1;
   }
 
-  const rankedTeams = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]);
-  const topVotes = rankedTeams[0]?.[1] ?? 0;
-  const tiedAtTop = topVotes > 0 && rankedTeams.filter(([, count]) => count === topVotes).length > 1;
-  const eliminatedTeamId = !tiedAtTop ? rankedTeams[0]?.[0] : undefined;
+  let maxVotes = 0;
+  let eliminatedId: string | null = null;
+  let isTie = false;
+
+  for (const [tId, count] of Object.entries(voteCounts)) {
+    if (count > maxVotes) {
+      maxVotes = count;
+      eliminatedId = tId;
+      isTie = false;
+    } else if (count === maxVotes) {
+      isTie = true;
+    }
+  }
+
+  const game = await GameModel.findById(gameId).exec();
+  if (!game) return 0;
+
   let trustDelta = 0;
-  let eliminatedTeam;
-  let eliminatedFaction;
+  const { byPlayerId, voteDistribution } = await resolveVoteTargets(gameId, voteCounts);
 
-  if (eliminatedTeamId) {
-    eliminatedTeam = activeTeamById.get(eliminatedTeamId);
-    const eliminatedPlayer = activePlayers.find((player) => player.teamId.toString() === eliminatedTeamId);
-    eliminatedFaction = eliminatedPlayer?.faction;
-    if (eliminatedFaction === "TRUST") trustDelta = -10;
-    if (eliminatedFaction === "CORRUPTION") trustDelta = 10;
-    await TeamModel.updateOne({ _id: eliminatedTeamId, gameId, eliminated: false }, { $set: { eliminated: true } });
+  if (!isTie && eliminatedId) {
+    const eliminatedPlayer = await PlayerModel.findById(eliminatedId).select("+faction +role").exec();
+    if (eliminatedPlayer) {
+      if (eliminatedPlayer.faction === "TRUST") {
+        trustDelta = -10;
+      } else if (eliminatedPlayer.faction === "CORRUPTION") {
+        trustDelta = 10;
+      }
+      await TeamModel.updateOne({ _id: eliminatedPlayer.teamId, gameId }, { $set: { eliminated: true } });
 
-    game.publicEvents.push({
-      id: new Types.ObjectId().toString(),
-      type: "ELIMINATION",
-      message: JSON.stringify({
+      const eliminatedInfo = byPlayerId.get(eliminatedId);
+      const details: VoteResultDetails = {
         round,
-        eliminatedTeamId,
-        eliminatedTeamNumber: eliminatedTeam?.teamNumber,
-        eliminatedTeamName: eliminatedTeam?.displayName,
-        votesReceived: topVotes,
-        faction: eliminatedFaction,
-        trustDelta,
         isTie: false,
-        voteDistribution: activeTeams.map((team) => ({
-          teamNumber: team.teamNumber,
-          teamName: team.displayName,
-          votes: voteCounts[team._id.toString()] ?? 0,
-        })),
-      }),
-      timestamp: Date.now(),
-    });
-  } else if (tiedAtTop) {
+        votesReceived: voteCounts[eliminatedId] ?? 0,
+        voteDistribution,
+        eliminatedTeamNumber: eliminatedInfo?.teamNumber,
+        eliminatedTeamName: eliminatedInfo?.displayName,
+        faction: (eliminatedPlayer.faction as VoteResultDetails["faction"]) ?? undefined,
+        role: (eliminatedPlayer.role as VoteResultDetails["role"]) ?? undefined,
+        trustDelta,
+      };
+
+      game.publicEvents.push({
+        id: new Types.ObjectId().toString(),
+        type: "VOTE_RESULT",
+        message: `ĐỘI ${eliminatedInfo?.teamNumber ?? "?"} đã bị loại sau biểu quyết.`,
+        timestamp: Date.now(),
+        data: JSON.stringify(details),
+      });
+    }
+  } else {
+    const details: VoteResultDetails = {
+      round,
+      isTie: true,
+      votesReceived: maxVotes,
+      voteDistribution,
+      trustDelta: 0,
+    };
     game.publicEvents.push({
       id: new Types.ObjectId().toString(),
       type: "VOTE_TIE",
-      message: JSON.stringify({
-        round,
-        isTie: true,
-        voteDistribution: activeTeams.map((team) => ({
-          teamNumber: team.teamNumber,
-          teamName: team.displayName,
-          votes: voteCounts[team._id.toString()] ?? 0,
-        })),
-      }),
-      timestamp: Date.now()
+      message: "Phiếu hòa — không đội nào bị loại trong đêm nay.",
+      timestamp: Date.now(),
+      data: JSON.stringify(details),
     });
   }
 
   await game.save();
-  return { trustDelta, eliminatedTeamId };
+  return trustDelta;
 }

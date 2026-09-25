@@ -196,7 +196,6 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
             roundNumber={1}
             questionText={SAMPLE_QUESTIONS[0].text}
             explanation={SAMPLE_QUESTIONS[0].explanation}
-            onProceed={() => alert("Test sự kiện: Chuyển sang Màn hình Hành động Ban đêm (P-06)")}
           />
         )}
 
@@ -208,7 +207,6 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
             questionText={SAMPLE_QUESTIONS[0].text}
             correctOptionText={SAMPLE_QUESTIONS[0].options[SAMPLE_QUESTIONS[0].correctOption]}
             explanation={SAMPLE_QUESTIONS[0].explanation}
-            onProceed={() => alert("Test sự kiện: Tiếp tục đêm với tư cách Công dân")}
           />
         )}
 
@@ -238,15 +236,17 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
           <PrivateResultView
             role={selectedRole}
             myTeamNumber={4}
-            targetTeamNumber={5}
             roundNumber={1}
             result={{
               id: "res-suspicious",
               type: "INVESTIGATION",
-              message: "CÓ DẤU HIỆU ĐÁNG NGỜ",
+              message: "Phát hiện dấu hiệu đáng ngờ từ hoạt động của đối tượng trong đêm nay.",
               createdAt: Date.now(),
+              outcome: "SUSPICIOUS",
+              title: "CÓ DẤU HIỆU ĐÁNG NGỜ",
+              round: 1,
+              targetTeamNumber: 5,
             }}
-            onAcknowledge={() => alert("Test sự kiện: Đã ghi nhận kết quả điều tra!")}
           />
         )}
 
@@ -254,15 +254,17 @@ export const TestScreenWrapper: React.FC<TestScreenWrapperProps> = ({ screenId }
           <PrivateResultView
             role={selectedRole}
             myTeamNumber={4}
-            targetTeamNumber={3}
             roundNumber={1}
             result={{
               id: "res-safe",
               type: "INVESTIGATION",
-              message: "CHƯA PHÁT HIỆN DẤU HIỆU",
+              message: "Chưa phát hiện dấu hiệu tiêu cực — hồ sơ của đối tượng tạm thời minh bạch.",
               createdAt: Date.now(),
+              outcome: "CLEAR",
+              title: "CHƯA PHÁT HIỆN DẤU HIỆU",
+              round: 1,
+              targetTeamNumber: 3,
             }}
-            onAcknowledge={() => alert("Test sự kiện: Đã ghi nhận kết quả điều tra an toàn!")}
           />
         )}
 

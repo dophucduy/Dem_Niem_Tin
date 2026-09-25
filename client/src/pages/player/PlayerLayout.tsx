@@ -34,9 +34,14 @@ function PlayerLayoutContent() {
         // The answer screen is part of this phase; wait there until the host advances.
         target = location.pathname === "/player/night/result" ? null : "/player/night/question";
         break;
-      case "NIGHT_ABILITY":
-        target = privateState?.abilityUnlocked ? "/player/night/ability" : "/player/night/observe";
+      case "NIGHT_ABILITY": {
+        const myTeamInfo = publicState.teams.find((t) => t.teamNumber === session?.teamNumber);
+        target =
+          privateState?.abilityUnlocked && !myTeamInfo?.eliminated
+            ? "/player/night/ability"
+            : "/player/night/observe";
         break;
+      }
       case "NIGHT_RESOLUTION":
         target = "/player/night/private-result";
         break;
