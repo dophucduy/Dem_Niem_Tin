@@ -304,8 +304,8 @@ export class GameRuntimeService {
       if (trustDelta) engine.updateTrust(trustDelta);
     }
     if (state.phase === "VOTE_RESULT") {
-      const result = await tallyVotes(game._id.toString(), state.round);
-      if (result.trustDelta) engine.updateTrust(result.trustDelta);
+      const trustDelta = await tallyVotes(game._id.toString(), state.round);
+      if (trustDelta) engine.updateTrust(trustDelta);
     }
   }
 

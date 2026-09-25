@@ -201,7 +201,7 @@ export class RoomService {
       status: room.status as RoomStatus,
       teams: publicTeams,
       connectedCount: publicTeams.filter((team) => team.connected).length,
-      capacity: null,
+      capacity: 8,
     };
   }
 }

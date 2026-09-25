@@ -65,7 +65,7 @@ export function registerLobbyHandlers(
 
     try {
       const joined = await roomService.joinRoom({ ...parsed.data, socketId: socket.id });
-      socket.data = { clientType: "PLAYER", roomId: joined.roomId, playerId: joined.playerId, teamNumber: parsed.data.teamNumber, displayName: parsed.data.displayName || `Đội ${parsed.data.teamNumber}` };
+      socket.data = { clientType: "PLAYER", roomId: joined.roomId, playerId: joined.playerId, teamNumber: joined.teamNumber, displayName: parsed.data.displayName || `Đội ${joined.teamNumber}` };
       await socket.join(roomChannel(joined.roomId));
       acknowledge({
         ok: true,
@@ -73,7 +73,6 @@ export function registerLobbyHandlers(
           room: joined.lobby,
           playerId: joined.playerId,
           teamId: joined.teamId,
-          teamNumber: joined.teamNumber,
           sessionToken: joined.sessionToken,
         },
       });
