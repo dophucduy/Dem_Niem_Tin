@@ -73,6 +73,7 @@ export function registerLobbyHandlers(
           room: joined.lobby,
           playerId: joined.playerId,
           teamId: joined.teamId,
+          teamNumber: joined.teamNumber,
           sessionToken: joined.sessionToken,
         },
       });
